@@ -1,0 +1,42 @@
+<html>
+<body>
+<video controls name="videoElement"></video>
+</body>
+<script src="/flv.js"></script>
+<script>
+    function flv_load() {
+        console.log('isSupported: ' + flvjs.isSupported());
+        let mediaDataSource = {
+            type: 'flv',
+            cors: true,
+            hasAudio: true,
+            hasVideo: true,
+            isLive: false,
+        };
+        mediaDataSource['url'] = "{{videoPath}}";
+        console.log('MediaDataSource', mediaDataSource);
+        flv_load_mds(mediaDataSource);
+    }
+
+    function flv_load_mds(mediaDataSource) {
+        let element = document.getElementsByName('videoElement')[0];
+        if (typeof player !== "undefined") {
+            if (player != null) {
+                player.unload();
+                player.detachMediaElement();
+                player.destroy();
+                player = null;
+            }
+        }
+        player = flvjs.createPlayer(mediaDataSource, {
+            enableWorker: false,
+            lazyLoadMaxDuration: 3 * 60,
+            seekType: 'range',
+        });
+        player.attachMediaElement(element);
+        player.load();
+    }
+
+    flv_load();
+</script>
+</html>
