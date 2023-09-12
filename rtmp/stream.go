@@ -6,7 +6,6 @@ import (
 	"github.com/LeeZXin/z-live/av"
 	"github.com/LeeZXin/z-live/flv"
 	"github.com/LeeZXin/zsf/executor"
-	"github.com/LeeZXin/zsf/quit"
 	"github.com/LeeZXin/zsf/util/threadutil"
 	"io"
 	"sync"
@@ -40,9 +39,6 @@ func newStreamWriter(conn *netConn) *streamWriter {
 }
 
 func (v *streamWriter) Start() {
-	quit.AddShutdownHook(func() {
-		v.Close()
-	})
 	go v.ReadPacket()
 	v.SendPacket()
 }
@@ -62,30 +58,32 @@ func (v *streamWriter) WritePacket(p *av.Packet) error {
 	if err := v.ctx.Err(); err != nil {
 		return err
 	}
-	p = p.Copy()
 	return threadutil.RunSafe(func() {
 		if p.IsAudio {
-			v.packetQueue <- p
+			v.packetQueue <- p.Copy()
 		}
 		if p.IsVideo {
 			videoPkt, ok := p.Header.(av.VideoPacketHeader)
 			if ok {
 				if videoPkt.IsSeq() || videoPkt.IsKeyFrame() {
-					v.packetQueue <- p
+					v.packetQueue <- p.Copy()
 				}
 			}
 		}
 		select {
-		case v.packetQueue <- p:
+		case v.packetQueue <- p.Copy():
 		default:
 		}
 	})
 }
 
 func (v *streamWriter) SendPacket() {
+	defer v.Close()
 	var cs chunkStream
 	for {
 		select {
+		case <-v.ctx.Done():
+			return
 		case p, ok := <-v.packetQueue:
 			if !ok {
 				return
@@ -93,8 +91,7 @@ func (v *streamWriter) SendPacket() {
 			cs.data = p.Data
 			cs.length = uint32(len(p.Data))
 			cs.streamId = p.StreamId
-			cs.timestamp = p.Timestamp + v.lastTimestamp
-			v.lastTimestamp = cs.timestamp
+			cs.timestamp = p.Timestamp
 			if p.IsVideo {
 				cs.typeId = av.TAG_VIDEO
 			} else {

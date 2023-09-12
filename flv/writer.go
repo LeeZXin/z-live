@@ -96,23 +96,22 @@ func (w *Writer) WritePacket(p *av.Packet) error {
 	if err := w.ctx.Err(); err != nil {
 		return err
 	}
-	p = p.Copy()
 	return threadutil.RunSafe(func() {
 		if p.IsAudio {
-			w.packetQueue <- p
+			w.packetQueue <- p.Copy()
 			return
 		}
 		if p.IsVideo {
 			videoPkt, ok := p.Header.(av.VideoPacketHeader)
 			if ok {
 				if videoPkt.IsSeq() || videoPkt.IsKeyFrame() {
-					w.packetQueue <- p
+					w.packetQueue <- p.Copy()
 					return
 				}
 			}
 		}
 		select {
-		case w.packetQueue <- p:
+		case w.packetQueue <- p.Copy():
 		default:
 		}
 	})

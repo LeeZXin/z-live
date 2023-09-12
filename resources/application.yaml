@@ -2,4 +2,4 @@ application:
   name: rtmp-demo
 
 hls:
-  saveFile: true
+  saveFile: false
