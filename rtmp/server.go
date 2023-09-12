@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
+	"github.com/LeeZXin/z-live/flv"
 	"github.com/LeeZXin/z-live/hls"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property"
 	"github.com/LeeZXin/zsf/quit"
+	"github.com/LeeZXin/zsf/util/strutil"
 	"github.com/LeeZXin/zsf/util/threadutil"
 	"io"
 	"net"
@@ -142,10 +145,10 @@ func handleConn(conn *netConn) {
 		registerPublisher(key, publisher)
 		defer deregisterPublisher(key)
 		// 将整个视频文件保存到本地
-		/*flvFileWriter, err := flv.NewFileWriter(fmt.Sprintf("./%s_%s_%d.flv", name, strutil.RandomStr(5), time.Now().UnixMilli()))
+		flvFileWriter, err := flv.NewFileWriter(fmt.Sprintf("./%s_%s_%d.flv", name, strutil.RandomStr(5), time.Now().UnixMilli()))
 		if err == nil {
 			publisher.Register(flvFileWriter)
-		}*/
+		}
 		logger.Logger.Info("open flv: ", url.QueryEscape("/"+key+".flv"))
 		// 可以用hls播放
 		hlsWriter := hls.NewStreamWriter(app, name)
