@@ -10,6 +10,7 @@ func main() {
 	startRtmp()
 	startHls()
 	startFlv()
+	startMp4()
 	zsf.Run()
 }
 
@@ -25,5 +26,10 @@ func startHls() {
 
 func startFlv() {
 	server := httpserver.NewFlvServer(":1937")
+	server.ListenAndServe()
+}
+
+func startMp4() {
+	server := httpserver.NewMp4Server(":1938")
 	server.ListenAndServe()
 }
