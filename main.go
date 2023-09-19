@@ -7,10 +7,11 @@ import (
 )
 
 func main() {
-	startRtmp()
+	/*startRtmp()
 	startHls()
 	startFlv()
-	startMp4()
+	startMp4()*/
+	startSfu()
 	zsf.Run()
 }
 
@@ -31,5 +32,10 @@ func startFlv() {
 
 func startMp4() {
 	server := httpserver.NewMp4Server(":1938")
+	server.ListenAndServe()
+}
+
+func startSfu() {
+	server := httpserver.NewSfuServer(":1939")
 	server.ListenAndServe()
 }

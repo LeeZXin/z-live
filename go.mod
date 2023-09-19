@@ -3,9 +3,12 @@ module github.com/LeeZXin/z-live
 go 1.20
 
 require (
-	github.com/LeeZXin/zsf v1.0.48
+	github.com/LeeZXin/zsf v1.0.50
 	github.com/gin-gonic/gin v1.9.0
+	github.com/pion/interceptor v0.1.19
+	github.com/pion/webrtc/v4 v4.0.0-beta.3
 	github.com/sirupsen/logrus v1.9.0
+	nhooyr.io/websocket v1.8.7
 )
 
 require (
@@ -17,6 +20,7 @@ require (
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -52,7 +56,23 @@ require (
 	github.com/nsqio/go-nsq v1.1.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pion/datachannel v1.5.5 // indirect
+	github.com/pion/dtls/v2 v2.2.7 // indirect
+	github.com/pion/ice/v3 v3.0.1 // indirect
+	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/mdns v0.0.8 // indirect
+	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/rtcp v1.2.10 // indirect
+	github.com/pion/rtp v1.8.1 // indirect
+	github.com/pion/sctp v1.8.9 // indirect
+	github.com/pion/sdp/v3 v3.0.6 // indirect
+	github.com/pion/srtp/v3 v3.0.0 // indirect
+	github.com/pion/stun/v2 v2.0.0 // indirect
+	github.com/pion/transport/v2 v2.2.4 // indirect
+	github.com/pion/transport/v3 v3.0.1 // indirect
+	github.com/pion/turn/v3 v3.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
@@ -65,6 +85,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
