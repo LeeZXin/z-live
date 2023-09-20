@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/LeeZXin/z-live/sfu"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
@@ -25,6 +24,7 @@ type SfuServer struct {
 type DcService struct {
 	ctx      context.Context
 	cancelFn context.CancelFunc
+	conn     *webrtc.PeerConnection
 }
 
 func NewDcService() sfu.RTPService {
@@ -33,6 +33,10 @@ func NewDcService() sfu.RTPService {
 		ctx:      ctx,
 		cancelFn: cancelFunc,
 	}
+}
+
+func (s *DcService) OnNewPeerConnection(conn *webrtc.PeerConnection) {
+	s.conn = conn
 }
 
 func (s *DcService) AuthenticateAndInit(request *http.Request) error {
@@ -45,6 +49,7 @@ func (s *DcService) OnTrack(*webrtc.TrackRemote, *webrtc.RTPReceiver) {}
 func (s *DcService) OnDataChannel(dc *webrtc.DataChannel) {
 	dc.OnOpen(func() {
 		go func() {
+			i := 0
 			ticker := time.NewTicker(3 * time.Second)
 			defer ticker.Stop()
 			for {
@@ -52,9 +57,14 @@ func (s *DcService) OnDataChannel(dc *webrtc.DataChannel) {
 				case <-s.ctx.Done():
 					return
 				case <-ticker.C:
+					i += 1
 					if err := dc.SendText(time.Now().String()); err != nil {
+						logger.Logger.Error(err.Error())
 						return
 					}
+				}
+				if i == 5 {
+					dc.Close()
 				}
 			}
 		}()
@@ -79,14 +89,7 @@ func NewSfuServer(addr string) *SfuServer {
 		MsgQueueSize: 8,
 	}))
 	engine.Any("/signal-video", ws.RegisterWebsocketService(func() ws.Service {
-		nano := time.Now().UnixNano()
-		return sfu.NewSignalService(
-			sfu.NewSaveToDiskTrackService(
-				fmt.Sprintf("./%d.ogg", nano),
-				fmt.Sprintf("./%d.ivf", nano),
-				nil,
-			),
-		)
+		return sfu.NewSignalService(sfu.NewSaveToDiskTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))

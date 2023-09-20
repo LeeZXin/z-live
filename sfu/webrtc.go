@@ -19,7 +19,7 @@ func newPeerConnection() (*webrtc.PeerConnection, error) {
 		},
 		PayloadType: 96,
 	}, webrtc.RTPCodecTypeVideo); err != nil {
-		panic(err)
+		return nil, err
 	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -31,12 +31,12 @@ func newPeerConnection() (*webrtc.PeerConnection, error) {
 		},
 		PayloadType: 111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
-		panic(err)
+		return nil, err
 	}
 	i := &interceptor.Registry{}
 	intervalPliFactory, err := intervalpli.NewReceiverInterceptor()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	i.Add(intervalPliFactory)
 	if err = webrtc.RegisterDefaultInterceptors(m, i); err != nil {
@@ -51,6 +51,7 @@ func newPeerConnection() (*webrtc.PeerConnection, error) {
 
 type RTPService interface {
 	AuthenticateAndInit(*http.Request) error
+	OnNewPeerConnection(*webrtc.PeerConnection)
 	OnDataChannel(*webrtc.DataChannel)
 	OnTrack(*webrtc.TrackRemote, *webrtc.RTPReceiver)
 	OnClose()

@@ -93,7 +93,8 @@ func (s *service) OnOpen(session *ws.Session) {
 		switch state {
 		case webrtc.PeerConnectionStateConnected:
 			session.Close(websocket.StatusNormalClosure, "")
-		case webrtc.PeerConnectionStateClosed:
+		case webrtc.PeerConnectionStateClosed, webrtc.PeerConnectionStateFailed:
+			session.Close(websocket.StatusNormalClosure, "")
 			if s.rtpService != nil {
 				s.rtpService.OnClose()
 			}
@@ -107,20 +108,19 @@ func (s *service) OnOpen(session *ws.Session) {
 	})
 	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 		session.Close(websocket.StatusAbnormalClosure, "sys err")
+		return
 	}
 	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
 		session.Close(websocket.StatusAbnormalClosure, "sys err")
+		return
 	}
 	peerConnection.OnDataChannel(func(dc *webrtc.DataChannel) {
-		if s.rtpService != nil {
-			s.rtpService.OnDataChannel(dc)
-		}
+		s.rtpService.OnDataChannel(dc)
 	})
 	peerConnection.OnTrack(func(remote *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		if s.rtpService != nil {
-			s.rtpService.OnTrack(remote, receiver)
-		}
+		s.rtpService.OnTrack(remote, receiver)
 	})
+	s.rtpService.OnNewPeerConnection(peerConnection)
 	s.conn = peerConnection
 }
 func (s *service) OnTextMessage(session *ws.Session, text string) {
@@ -170,8 +170,10 @@ func (s *service) OnTextMessage(session *ws.Session, text string) {
 func (*service) OnBinaryMessage(*ws.Session, []byte) {}
 
 func (s *service) OnClose(*ws.Session) {
-	state := s.conn.ConnectionState()
-	if state != webrtc.PeerConnectionStateConnected {
-		s.conn.Close()
+	if s.conn != nil {
+		state := s.conn.ConnectionState()
+		if state != webrtc.PeerConnectionStateConnected {
+			s.conn.Close()
+		}
 	}
 }
