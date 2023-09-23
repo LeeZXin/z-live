@@ -1,7 +1,6 @@
 package webm
 
 import (
-	"github.com/LeeZXin/zsf/logger"
 	"github.com/at-wat/ebml-go/webm"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -26,7 +25,6 @@ func NewSaver(fileName string) *Saver {
 }
 
 func (s *Saver) Close() {
-	logger.Logger.Info("ckkk")
 	if s.audioWriter != nil {
 		s.audioWriter.Close()
 	}
