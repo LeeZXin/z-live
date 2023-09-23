@@ -71,9 +71,10 @@ func (s *service) OnOpen(session *ws.Session) {
 		session.Close(websocket.StatusBadGateway, "authentication failed")
 		return
 	}
-	peerConnection, err := newPeerConnection()
+	peerConnection, err := newPeerConnection(s.rtpService.IsMediaRecvService())
 	if err != nil {
 		logger.Logger.Error(err.Error())
+		session.Close(websocket.StatusAbnormalClosure, "sys err")
 		return
 	}
 	peerConnection.OnICECandidate(func(c *webrtc.ICECandidate) {
@@ -106,14 +107,6 @@ func (s *service) OnOpen(session *ws.Session) {
 			peerConnection.Close()
 		}
 	})
-	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
-		session.Close(websocket.StatusAbnormalClosure, "sys err")
-		return
-	}
-	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
-		session.Close(websocket.StatusAbnormalClosure, "sys err")
-		return
-	}
 	peerConnection.OnDataChannel(func(dc *webrtc.DataChannel) {
 		s.rtpService.OnDataChannel(dc)
 	})
@@ -135,21 +128,17 @@ func (s *service) OnTextMessage(session *ws.Session, text string) {
 			return
 		}
 		if err = s.conn.SetRemoteDescription(offer); err != nil {
-			logger.Logger.Error(err.Error())
 			return
 		}
 		answer, err := s.conn.CreateAnswer(nil)
 		if err != nil {
-			logger.Logger.Error(err.Error())
 			return
 		}
 		if err = s.conn.SetLocalDescription(answer); err != nil {
-			logger.Logger.Error(err.Error())
 			return
 		}
 		outbound, err := json.Marshal(answer)
 		if err != nil {
-			logger.Logger.Error(err.Error())
 			return
 		}
 		if err = session.WriteTextMessage(string(outbound)); err != nil {
@@ -161,7 +150,6 @@ func (s *service) OnTextMessage(session *ws.Session, text string) {
 			return
 		}
 		if err = s.conn.AddICECandidate(candidate); err != nil {
-			logger.Logger.Error(err.Error())
 			return
 		}
 	}

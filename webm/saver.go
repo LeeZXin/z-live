@@ -1,6 +1,7 @@
 package webm
 
 import (
+	"github.com/LeeZXin/zsf/logger"
 	"github.com/at-wat/ebml-go/webm"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
@@ -25,6 +26,7 @@ func NewSaver(fileName string) *Saver {
 }
 
 func (s *Saver) Close() {
+	logger.Logger.Info("ckkk")
 	if s.audioWriter != nil {
 		s.audioWriter.Close()
 	}
@@ -61,7 +63,7 @@ func (s *Saver) PushVP8(rtpPacket *rtp.Packet) error {
 			raw := uint(sample.Data[6]) | uint(sample.Data[7])<<8 | uint(sample.Data[8])<<16 | uint(sample.Data[9])<<24
 			width := int(raw & 0x3FFF)
 			height := int((raw >> 16) & 0x3FFF)
-			if s.videoWriter == nil || s.audioWriter == nil {
+			if s.videoWriter == nil {
 				if err := s.initWriter(width, height); err != nil {
 					return err
 				}

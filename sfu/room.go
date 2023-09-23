@@ -1,8 +1,8 @@
 package sfu
 
 import (
+	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/hashset"
 	"github.com/LeeZXin/zsf/util/taskutil"
 	"github.com/pion/webrtc/v4"
 	"sync"
@@ -30,14 +30,24 @@ func init() {
 
 type Room struct {
 	id      string
-	members hashset.HashSet[*Member]
+	members map[string]*Member
 	mu      sync.RWMutex
 }
 
 func (r *Room) Members() []*Member {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.members.ToSlice()
+	ret := make([]*Member, 0, len(r.members))
+	for _, member := range r.members {
+		ret = append(ret, member)
+	}
+	return ret
+}
+
+func (r *Room) GetMember(userId string) *Member {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.members[userId]
 }
 
 func (r *Room) MemberSize() int {
@@ -46,64 +56,22 @@ func (r *Room) MemberSize() int {
 	return len(r.members)
 }
 
-func (r *Room) addMember(member *Member) {
-	if member == nil {
-		return
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.members.Add(member)
-}
-
 func (r *Room) AddMember(member *Member) {
-	r.addMember(member)
-	r.shareTrackFromEachOthers(member)
-}
-
-func (r *Room) shareTrackFromEachOthers(member *Member) {
-	if member == nil {
-		return
-	}
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for m := range r.members {
-		if m == member {
-			continue
-		}
-		member.AddOtherMemberTrack(m.AudioTrack())
-		member.AddOtherMemberTrack(m.VideoTrack())
-		m.AddOtherMemberTrack(member.AudioTrack())
-		m.AddOtherMemberTrack(member.VideoTrack())
-	}
-}
-
-func (r *Room) delMember(member *Member) {
 	if member == nil {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.members.Delete(member)
+	r.members[member.UserId()] = member
 }
 
 func (r *Room) DelMember(member *Member) {
-	r.delMember(member)
-	r.removeTrackFromEachOthers(member)
-}
-
-func (r *Room) removeTrackFromEachOthers(member *Member) {
 	if member == nil {
 		return
 	}
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for m := range r.members {
-		if m == member {
-			continue
-		}
-		m.RemoveOtherMemberTrack(m.AudioTrack())
-		m.RemoveOtherMemberTrack(m.VideoTrack())
-	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.members, member.UserId())
 }
 
 type Member struct {
@@ -112,21 +80,27 @@ type Member struct {
 	audioTrack atomic.Value
 	videoTrack atomic.Value
 	room       atomic.Value
+	userId     string
 
 	trackMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
 	trackMu  sync.RWMutex
 }
 
-func NewMember(conn *webrtc.PeerConnection) *Member {
+func NewMember(conn *webrtc.PeerConnection, userId string) *Member {
 	if conn == nil {
 		return nil
 	}
 	return &Member{
+		userId:   userId,
 		mu:       sync.RWMutex{},
 		conn:     conn,
 		trackMap: make(map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender, 8),
 		trackMu:  sync.RWMutex{},
 	}
+}
+
+func (m *Member) UserId() string {
+	return m.userId
 }
 
 func (m *Member) SetRoom(room *Room) {
@@ -166,6 +140,7 @@ func (m *Member) AddOtherMemberTrack(track *webrtc.TrackLocalStaticRTP) {
 	}
 	rtpSender, err := m.conn.AddTrack(track)
 	if err != nil {
+		logger.Logger.Error(err.Error())
 		return
 	}
 	m.addOtherMemberTrack(track, rtpSender)
@@ -204,7 +179,7 @@ func GetOrNewRoom(id string) *Room {
 	}
 	room = &Room{
 		id:      id,
-		members: make(hashset.HashSet[*Member], 8),
+		members: make(map[string]*Member, 8),
 		mu:      sync.RWMutex{},
 	}
 	roomMap[id] = room

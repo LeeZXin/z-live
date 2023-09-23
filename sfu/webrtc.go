@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func newPeerConnection() (*webrtc.PeerConnection, error) {
+func newPeerConnection(isRecv bool) (*webrtc.PeerConnection, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -46,10 +46,23 @@ func newPeerConnection() (*webrtc.PeerConnection, error) {
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{},
 	}
-	return api.NewPeerConnection(config)
+	ret, err := api.NewPeerConnection(config)
+	if err != nil {
+		return nil, err
+	}
+	if isRecv {
+		if _, err = ret.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
+			return nil, err
+		}
+		if _, err = ret.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 type RTPService interface {
+	IsMediaRecvService() bool
 	AuthenticateAndInit(*http.Request) error
 	OnNewPeerConnection(*webrtc.PeerConnection)
 	OnDataChannel(*webrtc.DataChannel)

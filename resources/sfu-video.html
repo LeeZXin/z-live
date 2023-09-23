@@ -49,7 +49,9 @@ Logs<br/>
                 }).catch(log)
             }).catch(log)
     }
-
+    pc.ontrack = event => {
+        console.log(event)
+    }
     pc.oniceconnectionstatechange = e => log(pc.iceConnectionState)
     pc.onicecandidate = e => {
         if (e.candidate && e.candidate.candidate !== "") {

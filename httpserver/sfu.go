@@ -6,6 +6,7 @@ import (
 	"github.com/LeeZXin/z-live/sfu"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
+	"github.com/LeeZXin/zsf/util/listutil"
 	"github.com/LeeZXin/zsf/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/pion/webrtc/v4"
@@ -33,6 +34,10 @@ func NewDcService() sfu.RTPService {
 		ctx:      ctx,
 		cancelFn: cancelFunc,
 	}
+}
+
+func (s *DcService) IsMediaRecvService() bool {
+	return false
 }
 
 func (s *DcService) OnNewPeerConnection(conn *webrtc.PeerConnection) {
@@ -89,25 +94,54 @@ func NewSfuServer(addr string) *SfuServer {
 		MsgQueueSize: 8,
 	}))
 	engine.Any("/signal-video", ws.RegisterWebsocketService(func() ws.Service {
-		return sfu.NewSignalService(sfu.NewSaveToDiskTrackService())
+		return sfu.NewSignalService(sfu.NewSaveIvfOggTrackService())
+	}, ws.Config{
+		MsgQueueSize: 8,
+	}))
+	engine.Any("/room", ws.RegisterWebsocketService(func() ws.Service {
+		return sfu.NewSignalService(sfu.NewJoinTrackService())
+	}, ws.Config{
+		MsgQueueSize: 8,
+	}))
+	engine.Any("/forward", ws.RegisterWebsocketService(func() ws.Service {
+		return sfu.NewSignalService(sfu.NewRoomForwardTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))
 	engine.GET("/video", func(c *gin.Context) {
-		html, err := openHtml("./resources/sfu-video.html")
-		if err != nil {
-			c.String(http.StatusNotFound, "error")
-			return
-		}
-		c.Data(http.StatusOK, "text/html; charset=utf-8", html)
+		openHtml("./resources/sfu-video.html", c)
+	})
+	engine.GET("/media", func(c *gin.Context) {
+		openHtml("./resources/media-device.html", c)
 	})
 	engine.GET("/dataChannel", func(c *gin.Context) {
-		html, err := openHtml("./resources/sfu-dataChannel-index.html")
-		if err != nil {
-			c.String(http.StatusNotFound, "error")
+		openHtml("./resources/sfu-dataChannel-index.html", c)
+	})
+	engine.GET("/jq.js", func(c *gin.Context) {
+		openHtml("./resources/jq.js", c)
+	})
+	engine.GET("/getMemberList", func(c *gin.Context) {
+		roomId, b := c.GetQuery("room")
+		if !b {
+			c.JSON(http.StatusOK, gin.H{
+				"data": []string{},
+			})
 			return
 		}
-		c.Data(http.StatusOK, "text/html; charset=utf-8", html)
+		room := sfu.GetRoom(roomId)
+		if room == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"data": []string{},
+			})
+			return
+		}
+		members := room.Members()
+		userIdList, _ := listutil.Map(members, func(t *sfu.Member) (string, error) {
+			return t.UserId(), nil
+		})
+		c.JSON(http.StatusOK, gin.H{
+			"data": userIdList,
+		})
 	})
 	ret.engine = engine
 	return ret
@@ -135,7 +169,11 @@ func (s *SfuServer) ListenAndServe() {
 	})
 }
 
-func openHtml(path string) ([]byte, error) {
+func openHtml(path string, c *gin.Context) {
 	file, err := os.ReadFile(path)
-	return file, err
+	if err != nil {
+		c.String(http.StatusNotFound, "error")
+		return
+	}
+	c.Data(http.StatusOK, "text/html; charset=utf-8", file)
 }

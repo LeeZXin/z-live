@@ -1,0 +1,216 @@
+<html>
+<body>
+<div>
+    <div>
+        <label for="roomIdInput">房间号</label><input id="roomIdInput"/>
+    </div>
+    <button onclick="openMediaStream()">开启视频</button>
+    <button onclick="joinRoom()">进入房间</button>
+</div>
+
+<br/><br/>
+localVideo<br/>
+<div>
+    <video id="localVideo" width="360" height="320" autoplay muted></video>
+</div>
+<br/>
+remoteVideo
+<div id="remoteVideoList"></div>
+<br/><br/>
+</body>
+<script src="/jq.js"></script>
+<script type="application/javascript">
+    const userId = generateRandomString(10);
+    const joinRoomUrl = `ws://${window.location.host}/room`;
+    const forwardUrl = `ws://${window.location.host}/forward`;
+
+    let videoDevices = [];
+    let audioDevices = [];
+    let audioDestination = null;
+    let mediaStream = null;
+    let remotePeerConnection = {};
+
+    function initPeerConnection(url) {
+        let peerConnection = new RTCPeerConnection();
+        let websocketConnection = new WebSocket(url)
+        websocketConnection.onmessage = msg => {
+            let content = JSON.parse(msg.data)
+            if (!content) {
+                return
+            }
+            if (content.candidate) {
+                peerConnection.addIceCandidate(content)
+            } else {
+                peerConnection.setRemoteDescription(content)
+            }
+        }
+        peerConnection.addTransceiver('video', {
+            direction: 'recvonly'
+        })
+        peerConnection.addTransceiver('audio', {
+            direction: 'recvonly'
+        })
+        peerConnection.oniceconnectionstatechange = _ => {
+            console.log("peerConnection ice state change:", peerConnection.iceConnectionState)
+        }
+        peerConnection.onicecandidate = event => {
+            if (event.candidate && event.candidate.candidate !== "") {
+                websocketConnection.send(JSON.stringify({
+                    msgType: "candidate",
+                    content: JSON.stringify(event.candidate)
+                }))
+            }
+        }
+        websocketConnection.onopen = () => {
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer)
+                websocketConnection.send(JSON.stringify({
+                    msgType: "offer",
+                    content: JSON.stringify(offer)
+                }))
+            }).catch(error => {
+                console.log("create offer failed:", error)
+            })
+        }
+        return peerConnection;
+    }
+
+    // 获取设备列表
+    function getMediaDevices() {
+        navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                videoDevices = devices.filter(function (device) {
+                    return device.kind === "videoinput" && device.deviceId !== "";
+                });
+                audioDevices = devices.filter(function (device) {
+                    return device.kind === "audiooutput" && device.deviceId !== "";
+                });
+                console.log('可用摄像头设备列表：', videoDevices);
+                console.log('可用音频列表：', audioDevices);
+            })
+            .catch(error => {
+                if (error.name === 'NotAllowedError') {
+                    console.log('用户拒绝了访问媒体设备的权限');
+                } else {
+                    console.log('获取音频设备列表失败：', error);
+                }
+            });
+    }
+
+    function openAudioContext(stream) {
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        audioDestination = audioContext.createMediaStreamDestination();
+        source.connect(audioDestination);
+    }
+
+    function switchAudioDevice(deviceId) {
+        if (!audioDestination) {
+            return
+        }
+        if (typeof audioDestination.audioOutput !== 'undefined') {
+            audioDestination.audioOutput.setSinkId(deviceId)
+                .then(() => console.log('扬声器切换成功！'))
+                .catch(error => console.log('扬声器切换失败：', error));
+        } else if (typeof audioDestination.audioOutputId !== 'undefined') {
+            audioDestination.audioOutputId = deviceId;
+        } else {
+            console.log('当前浏览器不支持切换扬声器功能。');
+        }
+    }
+
+    function joinRoom() {
+        let roomId = getRoomId();
+        if (!roomId) {
+            return
+        }
+        console.log("open room:", roomId)
+        if (!mediaStream) {
+            return;
+        }
+        let peerConnection = initPeerConnection(joinRoomUrl + "?user=" + userId + "&room=" + getRoomId())
+        mediaStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track);
+        })
+        remotePeerConnection[userId] = true
+        setTimeout(() => {
+            getMemberList(roomId)
+        }, 5000)
+    }
+
+    // 打开摄像头和麦克风
+    function openMediaStream() {
+        navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        }).then(stream => {
+            document.getElementById('localVideo').srcObject = stream
+            mediaStream = stream
+            openAudioContext(stream)
+        }).catch(error => {
+            console.log('获取媒体流失败：', error);
+        });
+    }
+
+    function initOtherMemberConnection(userId) {
+        let peerConnection = initPeerConnection(forwardUrl + "?user=" + userId + "&room=" + getRoomId());
+        peerConnection.ontrack = event => {
+            console.log("ontrack:", event)
+            const kind = event.track.kind
+            if (kind === 'video' || kind === 'audio') {
+                const el = document.createElement(kind)
+                el.srcObject = event.streams[0]
+                el.autoplay = true
+                el.controls = true
+                if (kind === 'audio') {
+                    el.style.display = 'none';
+                }
+                let div = document.getElementById("remoteVideo_" + userId);
+                if (div) {
+                    div.appendChild(el)
+                } else {
+                    div = document.createElement("div")
+                    div.id = "remoteVideo_" + userId;
+                    div.appendChild(el)
+                    document.getElementById('remoteVideoList').appendChild(div)
+                }
+            }
+        }
+    }
+
+    function getRoomId() {
+        return document.getElementById("roomIdInput").value
+    }
+
+    // 随机字符串
+    function generateRandomString(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * charactersLength);
+            result += characters.charAt(randomIndex);
+        }
+
+        return result;
+    }
+
+    function getMemberList(roomId) {
+        $.get("/getMemberList?room=" + roomId, resp => {
+            let data = resp.data
+            for (let index in data) {
+                if (!(data[index] in remotePeerConnection)) {
+                    remotePeerConnection[data[index]] = true
+                    initOtherMemberConnection(data[index])
+                }
+            }
+            setTimeout(() => {
+                getMemberList(roomId)
+            }, 5000)
+        })
+    }
+
+    getMediaDevices()
+</script>
+</html>

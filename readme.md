@@ -4,7 +4,8 @@ z-live
 > 代码方面会简洁一些 解决了一些bug 虽然注释还是很少  
 > 目前支持rtmp推流时，http-flv、hls、本地实时保存功能  
 > 里面还附带flv.js的简单demo  
-> 未来会考虑增加注释和webrtc的支持  
+> 支持webrtc sfu，dataChannel，视频保存，多人音视频通话  
+> 
   
 推流  
 ./ffmpeg -re -i demo.flv -c copy -f flv rtmp://127.0.0.1:1935/live/demo -loglevel debug  
