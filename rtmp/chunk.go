@@ -8,6 +8,7 @@ import (
 	"github.com/LeeZXin/z-live/util/bytesutil"
 )
 
+// chunkStream rtmp单个chunk流
 type chunkStream struct {
 	tfmt      uint32
 	fmt       uint32
@@ -29,10 +30,12 @@ func (c *chunkStream) toString() string {
 		c.fmt, c.csid, c.timestamp, c.length, c.typeId, c.streamId, c.timeDelta, c.hasExtTs, c.index, c.remain, c.readDone, len(c.data))
 }
 
+// isReadDone 判断单个流是否读取完毕
 func (c *chunkStream) isReadDone() bool {
 	return c.readDone
 }
 
+// new 初始化
 func (c *chunkStream) new() {
 	c.readDone = false
 	c.index = 0
@@ -113,6 +116,7 @@ func (c *chunkStream) writeHeader(conn *netConn) error {
 	return nil
 }
 
+// writeChunk 将chunk流写到conn中
 func (c *chunkStream) writeChunk(conn *netConn) error {
 	if c.typeId == idSetChunkSize {
 		conn.chunkSize = binary.BigEndian.Uint32(c.data)

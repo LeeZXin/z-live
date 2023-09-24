@@ -7,10 +7,10 @@ import (
 )
 
 func main() {
-	/*startRtmp()
+	startRtmp()
 	startHls()
 	startFlv()
-	startMp4()*/
+	startMp4()
 	startSfu()
 	zsf.Run()
 }

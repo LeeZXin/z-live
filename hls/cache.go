@@ -13,6 +13,9 @@ const (
 	dirPrefix     = "./hlstmp/"
 )
 
+/*
+m3u8,ts 内存缓存
+*/
 var (
 	ErrNoKey   = fmt.Errorf("no key for audioCache")
 	tsItemPool sync.Pool

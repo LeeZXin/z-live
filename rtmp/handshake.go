@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+/*
+解决rtmp握手问题
+*/
 var (
 	hsClientFullKey = []byte{
 		'G', 'e', 'n', 'u', 'i', 'n', 'e', ' ', 'A', 'd', 'o', 'b', 'e', ' ',

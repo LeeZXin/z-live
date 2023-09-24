@@ -11,6 +11,7 @@ var (
 	ErrReq = errors.New("wrong req")
 )
 
+// connectCmd 处理rtmp命令
 type connectCmd struct {
 	App            string `json:"app"`
 	FlashVer       string `json:"flashVer"`

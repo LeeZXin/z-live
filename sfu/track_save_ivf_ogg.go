@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// SaveIvfOggTrackService 保存音视频数据到ogg，ivf中
 type SaveIvfOggTrackService struct {
 	oggFile *oggwriter.OggWriter
 	ivfFile *ivfwriter.IVFWriter

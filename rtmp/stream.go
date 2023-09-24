@@ -15,6 +15,7 @@ const (
 	maxQueueNum = 1024
 )
 
+// streamWriter 获取rtmp推流，并转发写入到其他writer
 type streamWriter struct {
 	registerIndex int64
 	conn          *netConn

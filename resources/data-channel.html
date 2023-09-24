@@ -12,8 +12,13 @@
 </body>
 
 <script>
-    const socket = new WebSocket(`ws://${window.location.host}/signal-dataChannel?aaa=1`)
-    let pc = new RTCPeerConnection({
+    /*
+    本例子展示如何通过dataChannel与webrtc服务端通讯
+
+    websocket服务端作为信令服务交换sdp，创建webrtc连接
+     */
+    const socket = new WebSocket(`ws://${window.location.host}/signal-data-channel?aaa=1`)
+    let peerConnection = new RTCPeerConnection({
         iceServers: [
             {
                 urls: 'stun:stun.l.google.com:19302'
@@ -28,21 +33,21 @@
         }
 
         if (msg.candidate) {
-            pc.addIceCandidate(msg)
+            peerConnection.addIceCandidate(msg)
         } else {
-            pc.setRemoteDescription(msg)
+            peerConnection.setRemoteDescription(msg)
         }
     }
 
-    let dc = pc.createDataChannel('data')
-    dc.onmessage = event => {
+    let dataChannel = peerConnection.createDataChannel('data')
+    dataChannel.onmessage = event => {
         let el = document.createElement('p')
         el.appendChild(document.createTextNode(event.data))
 
         document.getElementById('inboundDataChannelMessages').appendChild(el);
     }
 
-    pc.onicecandidate = e => {
+    peerConnection.onicecandidate = e => {
         if (e.candidate && e.candidate.candidate !== "") {
             socket.send(JSON.stringify({
                 msgType: "candidate",
@@ -51,16 +56,16 @@
         }
     }
 
-    pc.oniceconnectionstatechange = () => {
+    peerConnection.oniceconnectionstatechange = () => {
         let el = document.createElement('p')
-        el.appendChild(document.createTextNode(pc.iceConnectionState))
+        el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
 
         document.getElementById('iceConnectionStates').appendChild(el);
     }
 
     socket.onopen = () => {
-        pc.createOffer().then(offer => {
-            pc.setLocalDescription(offer)
+        peerConnection.createOffer().then(offer => {
+            peerConnection.setLocalDescription(offer)
             socket.send(JSON.stringify({
                 msgType: "offer",
                 content: JSON.stringify(offer)

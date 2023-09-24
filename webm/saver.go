@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Saver 保存webm音视频数据
 type Saver struct {
 	audioWriter, videoWriter       webm.BlockWriteCloser
 	audioBuilder, videoBuilder     *samplebuilder.SampleBuilder
@@ -76,6 +77,7 @@ func (s *Saver) PushVP8(rtpPacket *rtp.Packet) error {
 	}
 }
 
+// initWriter 初始化writer
 func (s *Saver) initWriter(width, height int) error {
 	w, err := os.OpenFile(s.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {

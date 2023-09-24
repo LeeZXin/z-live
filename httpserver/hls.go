@@ -28,6 +28,9 @@ var crossDomainXml = []byte(
 	</cross-domain-policy>`,
 )
 
+/*
+HlsServer 获取m3u8、ts文件用于直播
+*/
 type HlsServer struct {
 	addr   string
 	engine *gin.Engine

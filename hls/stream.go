@@ -42,6 +42,7 @@ const (
 	liveMode
 )
 
+// StreamWriter 实现hls m3u8 ts转换
 type StreamWriter struct {
 	name        string
 	seq         int

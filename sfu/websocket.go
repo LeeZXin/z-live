@@ -9,6 +9,9 @@ import (
 	"nhooyr.io/websocket"
 )
 
+/*
+websocket service来做信令交换
+*/
 const (
 	CandidateType = "candidate"
 	OfferType     = "offer"

@@ -22,6 +22,7 @@ const (
 	maxQueueNum = 1024
 )
 
+// Writer 实现rtmp保存到本地flv文件或者使用http-flv传输
 type Writer struct {
 	buf         []byte
 	writer      io.WriteCloser

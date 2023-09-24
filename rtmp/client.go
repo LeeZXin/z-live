@@ -16,6 +16,9 @@ import (
 	"strings"
 )
 
+/*
+rtmp客户端 还没实现完全
+*/
 var (
 	respResult     = "_result"
 	respError      = "_error"

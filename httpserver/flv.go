@@ -21,6 +21,9 @@ const (
 	flvSuffix = ".flv"
 )
 
+/*
+FlvServer 用于http-flv，传输rtmp数据，直播使用
+*/
 type FlvServer struct {
 	addr   string
 	engine *gin.Engine

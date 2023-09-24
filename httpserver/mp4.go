@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
 	"github.com/LeeZXin/zsf/util/threadutil"
@@ -20,6 +19,9 @@ const (
 	mp4Suffix = ".mp4"
 )
 
+/*
+Mp4Server mp4服务端，可扩展控制mp4格式视频播放鉴权等控制
+*/
 type Mp4Server struct {
 	addr   string
 	engine *gin.Engine
@@ -75,7 +77,6 @@ func handleMp4Request(c *gin.Context) {
 		c.String(http.StatusBadRequest, "invalid path")
 		return
 	}
-	// Read the MP4 file from disk
 	videoFilePath := strings.TrimLeft(u, "/")
 	videoFile, err := os.Open(videoFilePath)
 	if err != nil {
@@ -83,12 +84,8 @@ func handleMp4Request(c *gin.Context) {
 		return
 	}
 	defer videoFile.Close()
-	fmt.Println(c.Request.Header)
-	// Set the Content-Type header
 	c.Header("Content-Type", "video/mp4")
-	// Set the Accept-Ranges header
 	c.Header("Accept-Ranges", "bytes")
-	// Get the range header value from the request
 	c.Status(http.StatusOK)
 	http.ServeContent(c.Writer, c.Request, "", time.Now(), videoFile)
 }

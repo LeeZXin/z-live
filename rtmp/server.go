@@ -23,6 +23,10 @@ const (
 	netTimeout = 3 * time.Second
 )
 
+/*
+TcpServer rtmp tcp服务端
+接收rtmp推流数据
+*/
 type TcpServer struct {
 	netTimeout time.Duration
 
@@ -88,6 +92,7 @@ func (r *TcpServer) ListenAndServe() {
 				logger.Logger.Infof("new client, connect remote: %s, local: %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 				go func() {
 					err2 := threadutil.RunSafe(func() {
+						// 处理tcp连接
 						handleConn(newNetConn(conn, 4*1024))
 					})
 					if err2 != nil {
@@ -102,7 +107,6 @@ func (r *TcpServer) ListenAndServe() {
 
 func handleConn(conn *netConn) {
 	defer func() {
-		logger.Logger.Debugf("connection: %s closed", conn.RemoteAddr())
 		conn.Close()
 	}()
 	// 握手
@@ -112,7 +116,6 @@ func handleConn(conn *netConn) {
 		}
 		return
 	}
-	logger.Logger.Debugf("handshake2Client success: %s", conn.Conn.RemoteAddr())
 	for {
 		if err := readAndHandleUserCtrlMsg(conn); err != nil {
 			if !errors.Is(err, io.EOF) {

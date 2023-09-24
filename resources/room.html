@@ -20,9 +20,14 @@ remoteVideo
 </body>
 <script src="/jq.js"></script>
 <script type="application/javascript">
+    /*
+    本例子将展示多人通讯音视频传输
+
+    有多少个人进入房间 就创建多少个<video></video>
+     */
     const userId = generateRandomString(10);
-    const joinRoomUrl = `ws://${window.location.host}/room`;
-    const forwardUrl = `ws://${window.location.host}/forward`;
+    const joinRoomUrl = `ws://${window.location.host}/signal-room`;
+    const forwardUrl = `ws://${window.location.host}/signal-forward`;
 
     let videoDevices = [];
     let audioDevices = [];

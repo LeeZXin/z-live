@@ -1,5 +1,6 @@
 package hls
 
+// status 转换过程中 数据保存
 type status struct {
 	hasSetFirstTs  bool
 	firstTimestamp int64

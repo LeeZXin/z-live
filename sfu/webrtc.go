@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// newPeerConnection 初始化peerConnection
 func newPeerConnection(isRecv bool) (*webrtc.PeerConnection, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
@@ -61,11 +62,20 @@ func newPeerConnection(isRecv bool) (*webrtc.PeerConnection, error) {
 	return ret, nil
 }
 
+// RTPService 业务服务interface
 type RTPService interface {
+	// IsMediaRecvService 是否接收媒体音视频流
+	// 通常保存音视频数据的服务需要返回true
+	// 在多人通讯下 roomForwardService返回false
 	IsMediaRecvService() bool
+	// AuthenticateAndInit 鉴权并初始化数据
 	AuthenticateAndInit(*http.Request) error
+	// OnNewPeerConnection 当peerConnection构建时触发
 	OnNewPeerConnection(*webrtc.PeerConnection)
+	// OnDataChannel 触发dataChannel
 	OnDataChannel(*webrtc.DataChannel)
+	// OnTrack 触发音视频数据
 	OnTrack(*webrtc.TrackRemote, *webrtc.RTPReceiver)
+	// OnClose 连接关闭时触发
 	OnClose()
 }

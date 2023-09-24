@@ -9,76 +9,31 @@ import (
 	"github.com/LeeZXin/zsf/util/listutil"
 	"github.com/LeeZXin/zsf/ws"
 	"github.com/gin-gonic/gin"
-	"github.com/pion/webrtc/v4"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 )
 
+/*
+SfuServer 将展示webrtc协议下，sfu架构的通讯过程
+利用websocket作为信令服务端交换sdp
+可完成浏览器webrtc协议下
+1、dataChannel传递数据，有http，感觉没什么用
+2、将浏览器音视频数据实时保存在服务端本地
+3、多人通过房间号音视频通讯
+
+websocket使用zsf封装对websocket使用
+
+多人音视频通讯采用多peerConnection架构
+即有多少个成员，一个客户端就创建多少个peerConnection
+可用于服务器调度和容灾考虑
+具体查看readme
+*/
 type SfuServer struct {
 	addr      string
 	engine    *gin.Engine
 	startOnce sync.Once
-}
-
-type DcService struct {
-	ctx      context.Context
-	cancelFn context.CancelFunc
-	conn     *webrtc.PeerConnection
-}
-
-func NewDcService() sfu.RTPService {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	return &DcService{
-		ctx:      ctx,
-		cancelFn: cancelFunc,
-	}
-}
-
-func (s *DcService) IsMediaRecvService() bool {
-	return false
-}
-
-func (s *DcService) OnNewPeerConnection(conn *webrtc.PeerConnection) {
-	s.conn = conn
-}
-
-func (s *DcService) AuthenticateAndInit(request *http.Request) error {
-	logger.Logger.Info("header:", request.Header)
-	return nil
-}
-
-func (s *DcService) OnTrack(*webrtc.TrackRemote, *webrtc.RTPReceiver) {}
-
-func (s *DcService) OnDataChannel(dc *webrtc.DataChannel) {
-	dc.OnOpen(func() {
-		go func() {
-			i := 0
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-s.ctx.Done():
-					return
-				case <-ticker.C:
-					i += 1
-					if err := dc.SendText(time.Now().String()); err != nil {
-						logger.Logger.Error(err.Error())
-						return
-					}
-				}
-				if i == 5 {
-					dc.Close()
-				}
-			}
-		}()
-	})
-}
-
-func (s *DcService) OnClose() {
-	logger.Logger.Info("closeeeee")
-	s.cancelFn()
 }
 
 func NewSfuServer(addr string) *SfuServer {
@@ -88,38 +43,49 @@ func NewSfuServer(addr string) *SfuServer {
 		startOnce: sync.Once{},
 	}
 	engine := gin.New()
-	engine.Any("/signal-dataChannel", ws.RegisterWebsocketService(func() ws.Service {
-		return sfu.NewSignalService(NewDcService())
+	// 创建data-channel的信令
+	engine.Any("/signal-data-channel", ws.RegisterWebsocketService(func() ws.Service {
+		return sfu.NewSignalService(sfu.NewDataChannelService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))
+	// 将浏览器实时音视频保存在服务器
 	engine.Any("/signal-video", ws.RegisterWebsocketService(func() ws.Service {
-		return sfu.NewSignalService(sfu.NewSaveIvfOggTrackService())
+		// return sfu.NewSignalService(sfu.NewSaveIvfOggTrackService())
+		return sfu.NewSignalService(sfu.NewSaveToWebmTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))
-	engine.Any("/room", ws.RegisterWebsocketService(func() ws.Service {
+	// 多人通讯进入房间
+	engine.Any("/signal-room", ws.RegisterWebsocketService(func() ws.Service {
 		return sfu.NewSignalService(sfu.NewJoinTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))
-	engine.Any("/forward", ws.RegisterWebsocketService(func() ws.Service {
+	// 多人通讯下多PeerConnection 音视频转发
+	engine.Any("/signal-forward", ws.RegisterWebsocketService(func() ws.Service {
 		return sfu.NewSignalService(sfu.NewRoomForwardTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))
-	engine.GET("/video", func(c *gin.Context) {
-		openHtml("./resources/sfu-video.html", c)
+	// 将浏览器实时音视频保存在服务器 html页面
+	engine.GET("/video.html", func(c *gin.Context) {
+		openHtml("./resources/video.html", c)
 	})
-	engine.GET("/media", func(c *gin.Context) {
-		openHtml("./resources/media-device.html", c)
+	// 多人通讯 html页面
+	engine.GET("/room.html", func(c *gin.Context) {
+		openHtml("./resources/room.html", c)
 	})
-	engine.GET("/dataChannel", func(c *gin.Context) {
-		openHtml("./resources/sfu-dataChannel-index.html", c)
+	// dataChannel html页面
+	engine.GET("/data-channel.html", func(c *gin.Context) {
+		openHtml("./resources/data-channel.html", c)
 	})
+	// jq.js
 	engine.GET("/jq.js", func(c *gin.Context) {
 		openHtml("./resources/jq.js", c)
 	})
+	// 获取房间成员名单
+	// 浏览器通过定时获取成员名单来创建多个<video></video>
 	engine.GET("/getMemberList", func(c *gin.Context) {
 		roomId, b := c.GetQuery("room")
 		if !b {
@@ -169,6 +135,7 @@ func (s *SfuServer) ListenAndServe() {
 	})
 }
 
+// openHtml 打开本地文件
 func openHtml(path string, c *gin.Context) {
 	file, err := os.ReadFile(path)
 	if err != nil {

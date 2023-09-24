@@ -1,7 +1,6 @@
 package sfu
 
 import (
-	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
 	"github.com/LeeZXin/zsf/util/taskutil"
 	"github.com/pion/webrtc/v4"
@@ -11,11 +10,14 @@ import (
 )
 
 var (
+	// roomMap 存储房间
 	roomMap = make(map[string]*Room, 8)
-	roomMu  = sync.RWMutex{}
+	// roomMu 房间锁
+	roomMu = sync.RWMutex{}
 )
 
 func init() {
+	// 定时清除房间人数为0的房间
 	task, _ := taskutil.NewPeriodicalTask(30*time.Second, func() {
 		roomList := GetRoomList()
 		for _, room := range roomList {
@@ -23,17 +25,20 @@ func init() {
 		}
 	})
 	task.Start()
+	// 程序退出时关闭定时任务
 	quit.AddShutdownHook(func() {
 		task.Stop()
 	})
 }
 
+// Room 多人通讯房间
 type Room struct {
 	id      string
 	members map[string]*Member
 	mu      sync.RWMutex
 }
 
+// Members 获取房间成员列表
 func (r *Room) Members() []*Member {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -44,18 +49,21 @@ func (r *Room) Members() []*Member {
 	return ret
 }
 
+// GetMember 获取单个成员
 func (r *Room) GetMember(userId string) *Member {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.members[userId]
 }
 
+// MemberSize 成员数量
 func (r *Room) MemberSize() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.members)
 }
 
+// AddMember 添加成员
 func (r *Room) AddMember(member *Member) {
 	if member == nil {
 		return
@@ -65,6 +73,7 @@ func (r *Room) AddMember(member *Member) {
 	r.members[member.UserId()] = member
 }
 
+// DelMember 删除成员
 func (r *Room) DelMember(member *Member) {
 	if member == nil {
 		return
@@ -74,6 +83,7 @@ func (r *Room) DelMember(member *Member) {
 	delete(r.members, member.UserId())
 }
 
+// Member 成员
 type Member struct {
 	mu         sync.RWMutex
 	conn       *webrtc.PeerConnection
@@ -81,28 +91,26 @@ type Member struct {
 	videoTrack atomic.Value
 	room       atomic.Value
 	userId     string
-
-	trackMap map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender
-	trackMu  sync.RWMutex
 }
 
+// NewMember 创建一个成员
 func NewMember(conn *webrtc.PeerConnection, userId string) *Member {
 	if conn == nil {
 		return nil
 	}
 	return &Member{
-		userId:   userId,
-		mu:       sync.RWMutex{},
-		conn:     conn,
-		trackMap: make(map[*webrtc.TrackLocalStaticRTP]*webrtc.RTPSender, 8),
-		trackMu:  sync.RWMutex{},
+		userId: userId,
+		mu:     sync.RWMutex{},
+		conn:   conn,
 	}
 }
 
+// UserId 获取成员用户id
 func (m *Member) UserId() string {
 	return m.userId
 }
 
+// SetRoom 记录成员所在房间
 func (m *Member) SetRoom(room *Room) {
 	if room == nil {
 		return
@@ -110,14 +118,17 @@ func (m *Member) SetRoom(room *Room) {
 	m.room.Store(room)
 }
 
+// SetAudioTrack 保存音频track
 func (m *Member) SetAudioTrack(track *webrtc.TrackLocalStaticRTP) {
 	m.audioTrack.Store(track)
 }
 
+// SetVideoTrack 保存视频track
 func (m *Member) SetVideoTrack(track *webrtc.TrackLocalStaticRTP) {
 	m.videoTrack.Store(track)
 }
 
+// AudioTrack 获取音频track
 func (m *Member) AudioTrack() *webrtc.TrackLocalStaticRTP {
 	val := m.audioTrack.Load()
 	if val != nil {
@@ -126,6 +137,7 @@ func (m *Member) AudioTrack() *webrtc.TrackLocalStaticRTP {
 	return nil
 }
 
+// VideoTrack 获取视频track
 func (m *Member) VideoTrack() *webrtc.TrackLocalStaticRTP {
 	val := m.videoTrack.Load()
 	if val != nil {
@@ -134,34 +146,7 @@ func (m *Member) VideoTrack() *webrtc.TrackLocalStaticRTP {
 	return nil
 }
 
-func (m *Member) AddOtherMemberTrack(track *webrtc.TrackLocalStaticRTP) {
-	if track == nil {
-		return
-	}
-	rtpSender, err := m.conn.AddTrack(track)
-	if err != nil {
-		logger.Logger.Error(err.Error())
-		return
-	}
-	m.addOtherMemberTrack(track, rtpSender)
-}
-
-func (m *Member) addOtherMemberTrack(track *webrtc.TrackLocalStaticRTP, sender *webrtc.RTPSender) {
-	m.trackMu.Lock()
-	defer m.trackMu.Unlock()
-	m.trackMap[track] = sender
-}
-
-func (m *Member) RemoveOtherMemberTrack(track *webrtc.TrackLocalStaticRTP) {
-	m.trackMu.Lock()
-	defer m.trackMu.Unlock()
-	sender, ok := m.trackMap[track]
-	if ok {
-		_ = m.conn.RemoveTrack(sender)
-	}
-	delete(m.trackMap, track)
-}
-
+// Room 获取成员所在房间
 func (m *Member) Room() *Room {
 	val := m.room.Load()
 	if val != nil {
@@ -170,6 +155,7 @@ func (m *Member) Room() *Room {
 	return nil
 }
 
+// GetOrNewRoom 获取或者创建房间
 func GetOrNewRoom(id string) *Room {
 	roomMu.Lock()
 	defer roomMu.Unlock()
@@ -186,6 +172,7 @@ func GetOrNewRoom(id string) *Room {
 	return room
 }
 
+// CheckRoomMemberIsZero 检查房间成员数量是否为0
 func CheckRoomMemberIsZero(room *Room) {
 	if room == nil {
 		return
@@ -197,12 +184,14 @@ func CheckRoomMemberIsZero(room *Room) {
 	}
 }
 
-func GetRoom(id string) *Room {
+// GetRoom 获取单个房间
+func GetRoom(roomId string) *Room {
 	roomMu.RLock()
 	defer roomMu.RUnlock()
-	return roomMap[id]
+	return roomMap[roomId]
 }
 
+// GetRoomList 获取房间列表
 func GetRoomList() []*Room {
 	roomMu.RLock()
 	defer roomMu.RUnlock()

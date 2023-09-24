@@ -8,6 +8,7 @@ var (
 	maxGOPCap = 1024
 )
 
+// gop group of picture
 type gop struct {
 	packets []*av.Packet
 }
@@ -26,6 +27,7 @@ func (g *gop) reset() {
 	g.packets = g.packets[:0]
 }
 
+// gopRingQueue 环形队列
 type gopRingQueue struct {
 	start  bool
 	gopNum int

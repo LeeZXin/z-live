@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// JoinRoomTrackService 多人音视频通话加入房间service
 type JoinRoomTrackService struct {
 	conn   *webrtc.PeerConnection
 	roomId string
