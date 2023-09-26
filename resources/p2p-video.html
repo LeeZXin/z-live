@@ -1,0 +1,207 @@
+<html>
+<body>
+<div>
+    <div>
+        <label for="roomIdInput">房间号</label><input id="roomIdInput"/>
+    </div>
+    <button onclick="joinRoom()">进入房间</button>
+</div>
+<br/>
+
+Video<br/>
+<video id="video1" width="360" height="320" autoplay muted></video>
+<br/>
+Remote<br/>
+<div id="remoteVideoList"></div>
+<br/>
+Logs<br/>
+<div id="logs"></div>
+</body>
+<script>
+    const userId = generateRandomString(10)
+    let sendOffer = false
+
+    /*
+    本例子展示如何通过p2p dataChannel与webrtc服务端通讯
+
+    websocket服务端作为信令服务交换sdp，创建webrtc连接
+     */
+    function joinRoom() {
+        let roomId = getRoomId()
+        if (!roomId) {
+            return
+        }
+        const socket = new WebSocket(`ws://${window.location.host}/signal?user=${userId}&room=${roomId}`)
+        const peerConnection = new RTCPeerConnection({
+            iceServers: [
+                {
+                    urls: 'stun:stun.l.google.com:19302'
+                }
+            ],
+            iceTransportPolicy: "all"
+        })
+
+        socket.onmessage = e => {
+            let msg = JSON.parse(e.data)
+            if (!msg) {
+                return console.log('failed to parse msg')
+            }
+
+            if (msg.msgType === 'candidate') {
+                peerConnection.addIceCandidate(JSON.parse(msg.content))
+            } else if (msg.msgType === 'offer') {
+                peerConnection.setRemoteDescription(JSON.parse(msg.content))
+                peerConnection.createAnswer().then(answer => {
+                    peerConnection.setLocalDescription(answer)
+                    socket.send(JSON.stringify({
+                        msgType: "answer",
+                        content: JSON.stringify(answer)
+                    }))
+                })
+            } else if (msg.msgType === 'answer') {
+                peerConnection.setRemoteDescription(JSON.parse(msg.content))
+            } else if (msg.msgType === 'action') {
+                if (msg.content === 'sendOffer') {
+                    navigator.mediaDevices.getUserMedia({video: true, audio: true})
+                        .then(stream => {
+                            document.getElementById('video1').srcObject = stream
+                            stream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, stream)
+                            })
+                            peerConnection.createOffer().then(offer => {
+                                peerConnection.setLocalDescription(offer)
+                                socket.send(JSON.stringify({
+                                    msgType: "offer",
+                                    content: JSON.stringify(offer)
+                                }))
+                            })
+                        }).catch(log)
+                } else if (msg.content === 'recvAnswer') {
+                    navigator.mediaDevices.getUserMedia({video: true, audio: true})
+                        .then(stream => {
+                            document.getElementById('video1').srcObject = stream
+                            stream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, stream)
+                            })
+                        }).catch(log)
+                }
+            }
+        }
+
+        peerConnection.ontrack = event => {
+            console.log("ontrack:", event)
+            const kind = event.track.kind
+            if (kind === 'video' || kind === 'audio') {
+                const el = document.createElement(kind)
+                el.srcObject = event.streams[0]
+                el.autoplay = true
+                el.controls = true
+                if (kind === 'audio') {
+                    el.style.display = 'none';
+                }
+                let div = document.getElementById("remoteVideo");
+                if (div) {
+                    div.appendChild(el)
+                } else {
+                    div = document.createElement("div")
+                    div.id = "remoteVideo";
+                    div.appendChild(el)
+                    document.getElementById('remoteVideoList').appendChild(div)
+                }
+            }
+        }
+
+
+        peerConnection.onicecandidate = e => {
+            console.log(e)
+            if (e.candidate && e.candidate.candidate !== "") {
+                socket.send(JSON.stringify({
+                    msgType: "candidate",
+                    content: JSON.stringify(e.candidate)
+                }))
+            }
+        }
+
+        peerConnection.oniceconnectionstatechange = () => {
+            let el = document.createElement('p')
+            el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
+            document.getElementById('iceConnectionStates').appendChild(el);
+            if (peerConnection.iceConnectionState === 'connected') {
+                socket.close()
+            }
+        }
+    }
+
+    function getRoomId() {
+        return document.getElementById("roomIdInput").value
+    }
+
+    // 随机字符串
+    function generateRandomString(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * charactersLength);
+            result += characters.charAt(randomIndex);
+        }
+
+        return result;
+    }
+
+</script>
+<script type="application/javascript">
+    const socket = new WebSocket(`ws://${window.location.host}/signal-video?aaa=1`)
+    const pc = new RTCPeerConnection({
+        iceServers: [
+            {
+                urls: 'stun:stun.l.google.com:19302'
+            }
+        ]
+    })
+    socket.onmessage = e => {
+        let msg = JSON.parse(e.data)
+        if (!msg) {
+            return log('failed to parse msg')
+        }
+
+        if (msg.candidate) {
+            pc.addIceCandidate(msg)
+        } else {
+            pc.setRemoteDescription(msg)
+        }
+    }
+    const log = msg => {
+        document.getElementById('logs').innerHTML += msg + '<br>'
+    }
+    socket.onopen = () => {
+        navigator.mediaDevices.getUserMedia({video: true, audio: true})
+            .then(stream => {
+                document.getElementById('video1').srcObject = stream
+                stream.getTracks().forEach(track => {
+                    pc.addTrack(track, stream)
+                })
+                pc.createOffer().then(offer => {
+                    pc.setLocalDescription(offer)
+                    socket.send(JSON.stringify({
+                        msgType: "offer",
+                        content: JSON.stringify(offer)
+                    }))
+                }).catch(log)
+            }).catch(log)
+    }
+    pc.ontrack = event => {
+        console.log(event)
+    }
+    pc.oniceconnectionstatechange = e => log(pc.iceConnectionState)
+    pc.onicecandidate = e => {
+        if (e.candidate && e.candidate.candidate !== "") {
+            socket.send(JSON.stringify({
+                msgType: "candidate",
+                content: JSON.stringify(e.candidate)
+            }))
+        }
+    }
+</script>
+</html>

@@ -130,7 +130,7 @@ type streamPublisher struct {
 	registry       *writerRegistryHolder
 	writeExecutors *executor.Executor
 
-	sync.Mutex
+	sync.RWMutex
 	closed bool
 }
 
@@ -139,7 +139,7 @@ func newStreamPublisher(conn *netConn) *streamPublisher {
 		registry: newWriterRegistryHolder(),
 		conn:     conn,
 		cache:    newStreamCache(),
-		Mutex:    sync.Mutex{},
+		RWMutex:  sync.RWMutex{},
 	}
 }
 
@@ -186,8 +186,8 @@ func (v *streamPublisher) start() {
 }
 
 func (v *streamPublisher) isClosed() bool {
-	v.Lock()
-	defer v.Unlock()
+	v.RLock()
+	defer v.RUnlock()
 	return v.closed
 }
 

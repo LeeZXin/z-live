@@ -3,9 +3,11 @@ z-live
 > 重构了 [live-go](https://github.com/gwuhaolin/livego) 部分代码  
 > 代码方面会简洁一些 解决了一些bug 虽然注释还是很少  
 > 目前支持rtmp推流时，http-flv、hls、本地实时保存功能  
+> 支持aes加密m3u8  
 > 里面还附带flv.js的简单demo  
+> webrtc 使用[pion-webrtc](https://github.com/pion/webrtc/v4)  
 > 支持webrtc sfu，dataChannel，视频保存，多人音视频通话  
-> 
+> 支持webrtc p2p dataChannel 双人音视频   
   
 推流  
 ./ffmpeg -re -i demo.flv -c copy -f flv rtmp://127.0.0.1:1935/live/demo -loglevel debug  
@@ -26,6 +28,10 @@ dataChannel 打开 http://localhost:1939/data-channel.html
 音视频保存打开 http://localhost:1939/video.html  
 多人视频通话打开 http://localhost:1939/room.html  
 
+p2p  
+dataChannel 打开 http://localhost:1942/p2p-data-channel.html  
+双人音视频打开 http://localhost:1942/p2p-video.html  
+
 多人音视频通讯采用多peerConnection架构  
 即有多少个成员，一个客户端就创建多少个peerConnection  
 使得一个房间可在多个服务器之间传输数据   
@@ -41,6 +47,6 @@ A的media连接和B->A forward连接 C->A forward连接必须在同一个服务�
 B的media连接和A->B forward连接 C->B forward连接必须在同一个服务器  
 C的media连接和A->C forward连接 B->C forward连接必须在同一个服务器  
 但这三组连接可以不用在同一台服务器  
-细品吧  
+
 
 

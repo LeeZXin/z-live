@@ -22,6 +22,11 @@ const (
 	maxQueueNum = 1024
 )
 
+const (
+	fileMode = iota + 1
+	httpMode
+)
+
 // Writer 实现rtmp保存到本地flv文件或者使用http-flv传输
 type Writer struct {
 	buf         []byte
@@ -29,8 +34,8 @@ type Writer struct {
 	packetQueue chan *av.Packet
 	ctx         context.Context
 	cancelFn    context.CancelFunc
-
-	closeOnce sync.Once
+	mode        int
+	closeOnce   sync.Once
 }
 
 func NewFileWriter(fileName string) (*Writer, error) {
@@ -38,7 +43,7 @@ func NewFileWriter(fileName string) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newWriter(file)
+	return newWriter(file, fileMode)
 }
 
 type httpWriterWrapper struct {
@@ -48,7 +53,7 @@ type httpWriterWrapper struct {
 func (w *httpWriterWrapper) Write(content []byte) (int, error) {
 	n, err := w.writer.Write(content)
 	if err == nil {
-		//w.flush()
+		w.flush()
 	}
 	return n, err
 }
@@ -64,10 +69,10 @@ func (w *httpWriterWrapper) Close() error {
 func NewHttpWriter(writer http.ResponseWriter) (*Writer, error) {
 	return newWriter(&httpWriterWrapper{
 		writer: writer,
-	})
+	}, httpMode)
 }
 
-func newWriter(writer io.WriteCloser) (*Writer, error) {
+func newWriter(writer io.WriteCloser, mode int) (*Writer, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	ret := &Writer{
 		writer:      writer,
@@ -76,6 +81,7 @@ func newWriter(writer io.WriteCloser) (*Writer, error) {
 		ctx:         ctx,
 		cancelFn:    cancelFunc,
 		closeOnce:   sync.Once{},
+		mode:        mode,
 	}
 	_, err := ret.writer.Write(flvHeader)
 	if err != nil {
@@ -98,6 +104,11 @@ func (w *Writer) WritePacket(p *av.Packet) error {
 		return err
 	}
 	return threadutil.RunSafe(func() {
+		// 文件模式直接存储 不丢包
+		if w.mode == fileMode {
+			w.packetQueue <- p.Copy()
+			return
+		}
 		if p.IsAudio {
 			w.packetQueue <- p.Copy()
 			return

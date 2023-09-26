@@ -3,6 +3,8 @@ package hls
 import (
 	"bytes"
 	"fmt"
+	"github.com/LeeZXin/zsf/logger"
+	"github.com/LeeZXin/zsf/util/cryptoutil"
 	"os"
 	"sync"
 	"time"
@@ -11,6 +13,12 @@ import (
 const (
 	maxTsCacheNum = 10
 	dirPrefix     = "./hlstmp/"
+
+	encryptFlag = true
+)
+
+var (
+	EncryptAesKey = []byte("zxHBRIg81deD3VAJ")
 )
 
 /*
@@ -47,11 +55,17 @@ type TsCache struct {
 	tsPathPrefix string
 	itemList     []string
 	itemMap      map[string]TsItem
+	util         cryptoutil.Crypto
 }
 
 func NewTsCache(app, name string) *TsCache {
+	cbc, err := cryptoutil.NewAesCBC(EncryptAesKey)
+	if err != nil {
+		logger.Logger.Panic(err)
+	}
 	key := app + "/" + name
 	ret := &TsCache{
+		util:         cbc,
 		index:        -1,
 		key:          key,
 		name:         name,
@@ -111,6 +125,12 @@ func (t *TsCache) genM3U8PlayList() []byte {
 		"#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-ALLOW-CACHE:NO\n#EXT-X-TARGETDURATION:%d\n#EXT-X-MEDIA-SEQUENCE:%d\n\n",
 		maxDuration/1000+1,
 		seq)
+	if encryptFlag {
+		fmt.Fprintf(w,
+			"#EXT-X-KEY:METHOD=AES-128,URI=\"%s\"\n",
+			fmt.Sprintf("/key?name=%s", t.name),
+		)
+	}
 	w.Write(ret.Bytes())
 	return w.Bytes()
 }
@@ -127,15 +147,28 @@ func (t *TsCache) SetItem(duration, seqNum int, b []byte) {
 		delete(t.itemMap, k)
 	}
 	item := NewTsItem()
-	item.Set(tsName, duration, seqNum, b)
+	if encryptFlag {
+		item.Set(tsName, duration, seqNum, t.encryptTs(b))
+	} else {
+		item.Set(tsName, duration, seqNum, b)
+	}
 	t.itemMap[tsName] = item
 	t.itemList[t.index] = tsName
 	if SaveFileFlag {
 		// save m3u8
 		t.saveFileContent(t.m3u8Path, t.genM3U8PlayList())
 		// save ts
-		t.saveFileContent(dirPrefix+tsName, b)
+		if encryptFlag {
+			t.saveFileContent(dirPrefix+tsName, t.encryptTs(b))
+		} else {
+			t.saveFileContent(dirPrefix+tsName, b)
+		}
 	}
+}
+
+func (t *TsCache) encryptTs(b []byte) []byte {
+	ret, _ := t.util.Encrypt(b)
+	return ret
 }
 
 func (t *TsCache) saveFileContent(fileName string, content []byte) error {

@@ -87,6 +87,11 @@ func handleHlsRequest(c *gin.Context) {
 		c.Writer.Write(crossDomainXml)
 		return
 	}
+	if c.Request.URL.Path == "/key" {
+		logger.Logger.Info("getKey")
+		c.Data(http.StatusOK, "application/octet-stream", hls.EncryptAesKey)
+		return
+	}
 	switch path.Ext(c.Request.URL.Path) {
 	case m3u8Suffix:
 		filePath, key, err := parseM3u8(c.Request.URL.Path)

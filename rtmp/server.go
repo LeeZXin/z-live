@@ -14,7 +14,6 @@ import (
 	"github.com/LeeZXin/zsf/util/threadutil"
 	"io"
 	"net"
-	"net/url"
 	"sync"
 	"time"
 )
@@ -77,6 +76,7 @@ func (r *TcpServer) ListenAndServe() {
 		logger.Logger.Info("listen rtmp tcp server: ", r.listener.Addr())
 		quit.AddShutdownHook(func() {
 			r.Shutdown()
+			closeAllPublisher()
 		})
 		go func() {
 			for {
@@ -93,7 +93,7 @@ func (r *TcpServer) ListenAndServe() {
 				go func() {
 					err2 := threadutil.RunSafe(func() {
 						// 处理tcp连接
-						handleConn(newNetConn(conn, 4*1024))
+						r.handleConn(newNetConn(conn, 4*1024))
 					})
 					if err2 != nil {
 						logger.Logger.Error(err2)
@@ -105,7 +105,7 @@ func (r *TcpServer) ListenAndServe() {
 	})
 }
 
-func handleConn(conn *netConn) {
+func (r *TcpServer) handleConn(conn *netConn) {
 	defer func() {
 		conn.Close()
 	}()
@@ -117,6 +117,9 @@ func handleConn(conn *netConn) {
 		return
 	}
 	for {
+		if r.ctx.Err() != nil {
+			return
+		}
 		if err := readAndHandleUserCtrlMsg(conn); err != nil {
 			if !errors.Is(err, io.EOF) {
 				logger.Logger.Error(err)
@@ -152,7 +155,6 @@ func handleConn(conn *netConn) {
 		if err == nil {
 			publisher.Register(flvFileWriter)
 		}
-		logger.Logger.Info("open flv: ", url.QueryEscape("/"+key+".flv"))
 		// 可以用hls播放
 		hlsWriter := hls.NewStreamWriter(app, name)
 		publisher.Register(hlsWriter)

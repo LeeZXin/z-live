@@ -27,6 +27,14 @@ func deregisterPublisher(key string) {
 	delete(publisherMap, key)
 }
 
+func closeAllPublisher() {
+	pmu.RLock()
+	defer pmu.RUnlock()
+	for _, publisher := range publisherMap {
+		publisher.close()
+	}
+}
+
 // FindPublisher 匹配
 func FindPublisher(key string) (RegisterAction, bool) {
 	pmu.RLock()

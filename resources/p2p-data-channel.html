@@ -1,0 +1,143 @@
+<html>
+<head>
+</head>
+
+<body>
+<div>
+    <div>
+        <label for="roomIdInput">房间号</label><input id="roomIdInput"/>
+    </div>
+    <button onclick="joinRoom()">进入房间</button>
+</div>
+<h3> ICE Connection States </h3>
+<div id="iceConnectionStates"></div>
+<br/>
+
+<h3> Inbound DataChannel Messages </h3>
+<div id="inboundDataChannelMessages"></div>
+</body>
+
+<script>
+    const userId = generateRandomString(10)
+    let sendOffer = false
+
+    /*
+    本例子展示如何通过p2p dataChannel与webrtc服务端通讯
+
+    websocket服务端作为信令服务交换sdp，创建webrtc连接
+     */
+    function joinRoom() {
+        let roomId = getRoomId()
+        if (!roomId) {
+            return
+        }
+        const socket = new WebSocket(`ws://${window.location.host}/signal?user=${userId}&room=${roomId}`)
+        const peerConnection = new RTCPeerConnection({
+            iceServers: [
+                {
+                    urls: 'stun:stun.l.google.com:19302'
+                }
+            ],
+            iceTransportPolicy: "all"
+        })
+
+        socket.onmessage = e => {
+            let msg = JSON.parse(e.data)
+            if (!msg) {
+                return console.log('failed to parse msg')
+            }
+
+            if (msg.msgType === 'candidate') {
+                peerConnection.addIceCandidate(JSON.parse(msg.content))
+            } else if (msg.msgType === 'offer') {
+                peerConnection.setRemoteDescription(JSON.parse(msg.content))
+                peerConnection.createAnswer().then(answer => {
+                    peerConnection.setLocalDescription(answer)
+                    socket.send(JSON.stringify({
+                        msgType: "answer",
+                        content: JSON.stringify(answer)
+                    }))
+                })
+            } else if (msg.msgType === 'answer') {
+                peerConnection.setRemoteDescription(JSON.parse(msg.content))
+            } else if (msg.msgType === 'action') {
+                if (msg.content === 'sendOffer') {
+                    let dataChannel = peerConnection.createDataChannel('data')
+                    dataChannel.onmessage = event => {
+                        let el = document.createElement('p')
+                        el.appendChild(document.createTextNode(event.data))
+
+                        document.getElementById('inboundDataChannelMessages').appendChild(el);
+                    }
+                    dataChannel.onopen = () => {
+                        console.log("datachannel onopen")
+                        setInterval(() => {
+                            dataChannel.send(`${userId}  hhhhhhhhhhh`)
+                        }, 3000)
+                    }
+                    peerConnection.createOffer().then(offer => {
+                        peerConnection.setLocalDescription(offer)
+                        socket.send(JSON.stringify({
+                            msgType: "offer",
+                            content: JSON.stringify(offer)
+                        }))
+                    })
+                }
+            }
+        }
+
+        peerConnection.ondatachannel = event => {
+            let channel = event.channel
+            console.log("ondatachannel", channel)
+            channel.onmessage = event => {
+                let el = document.createElement('p')
+                el.appendChild(document.createTextNode(event.data))
+
+                document.getElementById('inboundDataChannelMessages').appendChild(el);
+            }
+            setInterval(() => {
+                channel.send(`${userId}  yyyyyyyy`)
+            }, 3000)
+        }
+
+
+        peerConnection.onicecandidate = e => {
+            console.log(e)
+            if (e.candidate && e.candidate.candidate !== "") {
+                socket.send(JSON.stringify({
+                    msgType: "candidate",
+                    content: JSON.stringify(e.candidate)
+                }))
+            }
+        }
+
+        peerConnection.oniceconnectionstatechange = () => {
+            let el = document.createElement('p')
+            el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
+            document.getElementById('iceConnectionStates').appendChild(el);
+            if (peerConnection.iceConnectionState === 'connected') {
+                socket.close()
+            }
+        }
+    }
+
+    function getRoomId() {
+        return document.getElementById("roomIdInput").value
+    }
+
+    // 随机字符串
+    function generateRandomString(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * charactersLength);
+            result += characters.charAt(randomIndex);
+        }
+
+        return result;
+    }
+
+</script>
+</html>

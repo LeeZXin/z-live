@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LeeZXin/z-live/httpserver"
+	"github.com/LeeZXin/z-live/p2p"
 	"github.com/LeeZXin/z-live/rtmp"
 	"github.com/LeeZXin/zsf/zsf"
 )
@@ -12,6 +13,8 @@ func main() {
 	startFlv()
 	startMp4()
 	startSfu()
+	startTurn()
+	startP2pSignal()
 	zsf.Run()
 }
 
@@ -37,5 +40,14 @@ func startMp4() {
 
 func startSfu() {
 	server := httpserver.NewSfuServer(":1939")
+	server.ListenAndServe()
+}
+
+func startTurn() {
+	p2p.StartTurnServer(":1940", ":1941", "z-live", "127.0.0.1")
+}
+
+func startP2pSignal() {
+	server := httpserver.NewP2pSignalServer(":1942")
 	server.ListenAndServe()
 }
