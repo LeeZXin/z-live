@@ -3,9 +3,9 @@ package parser
 import (
 	"fmt"
 	"github.com/LeeZXin/z-live/av"
-	"github.com/LeeZXin/z-live/hls/parser/aac"
-	"github.com/LeeZXin/z-live/hls/parser/h264"
-	"github.com/LeeZXin/z-live/hls/parser/mp3"
+	"github.com/LeeZXin/z-live/parser/aac"
+	"github.com/LeeZXin/z-live/parser/h264"
+	"github.com/LeeZXin/z-live/parser/mp3"
 	"io"
 )
 
