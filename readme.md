@@ -7,30 +7,31 @@ z-live
 > 里面还附带flv.js的简单demo  
 > webrtc 使用[pion-webrtc](https://github.com/pion/webrtc/v4)  
 > 支持webrtc sfu，dataChannel，视频保存，多人音视频通话  
-> 支持webrtc p2p dataChannel 双人音视频   
-  
+> 支持webrtc p2p dataChannel 双人音视频
+
+ts目前只支持h264  
+
 推流  
-./ffmpeg -re -i demo.flv -c copy -f flv rtmp://127.0.0.1:1935/live/demo -loglevel debug  
-  
-  
+./ffmpeg -re -i demo.flv -c copy -f flv rtmp://127.0.0.1:1935/live/demo -loglevel debug
+
 http-flv  
 浏览器打开 http://localhost:1937/httpFlv.html?u=%2Flive%2Fdemo.flv  
-这个附带了flv.js的使用  
+这个附带了flv.js的使用
 
 hls  
-mac safari直接打开 http://localhost:1936/live/demo/demo.m3u8  
+mac safari直接打开 http://localhost:1936/live/demo/demo.m3u8
 
 实时文件保存  
-保存在项目目录下 默认.flv格式  
+保存在项目目录下 默认.flv格式
 
 webrtc服务端  
 dataChannel 打开 http://localhost:1939/data-channel.html  
 音视频保存打开 http://localhost:1939/video.html  
-多人视频通话打开 http://localhost:1939/room.html  
+多人视频通话打开 http://localhost:1939/room.html
 
 p2p  
 dataChannel 打开 http://localhost:1942/p2p-data-channel.html  
-双人音视频打开 http://localhost:1942/p2p-video.html  
+双人音视频打开 http://localhost:1942/p2p-video.html
 
 多人音视频通讯采用多peerConnection架构  
 即有多少个成员，一个客户端就创建多少个peerConnection  

@@ -55,9 +55,9 @@ type Parser struct {
 }
 
 type sequenceHeader struct {
-	configVersion        byte //8bits
+	version              byte //8bits
 	avcProfileIndication byte //8bits
-	profileCompatility   byte //8bits
+	profileCompatibility byte //8bits
 	avcLevelIndication   byte //8bits
 	reserved1            byte //6bits
 	naluLen              byte //2bits
@@ -83,9 +83,9 @@ func (p *Parser) parseSpecificInfo(src []byte) error {
 	var sps []byte
 	var pps []byte
 	var seq sequenceHeader
-	seq.configVersion = src[0]
+	seq.version = src[0]
 	seq.avcProfileIndication = src[1]
-	seq.profileCompatility = src[2]
+	seq.profileCompatibility = src[2]
 	seq.avcLevelIndication = src[3]
 	seq.reserved1 = src[4] & 0xfc
 	seq.naluLen = src[4]&0x03 + 1
@@ -130,7 +130,7 @@ func (p *Parser) naluSize(src []byte) (int, error) {
 		return 0, fmt.Errorf("nalusizedata invalid")
 	}
 	buf := src[:naluBytesLen]
-	size := int(0)
+	size := 0
 	for i := 0; i < len(buf); i++ {
 		size = size<<8 + int(buf[i])
 	}
