@@ -7,25 +7,18 @@ import (
 )
 
 const (
-	i_frame byte = 0
-	p_frame byte = 1
-	b_frame byte = 2
-)
-
-const (
-	nalu_type_not_define byte = 0
-	nalu_type_slice      byte = 1  //slice_layer_without_partioning_rbsp() sliceheader
-	nalu_type_dpa        byte = 2  // slice_data_partition_a_layer_rbsp( ), slice_header
-	nalu_type_dpb        byte = 3  // slice_data_partition_b_layer_rbsp( )
-	nalu_type_dpc        byte = 4  // slice_data_partition_c_layer_rbsp( )
-	nalu_type_idr        byte = 5  // slice_layer_without_partitioning_rbsp( ),sliceheader
-	nalu_type_sei        byte = 6  //sei_rbsp( )
-	nalu_type_sps        byte = 7  //seq_parameter_set_rbsp( )
-	nalu_type_pps        byte = 8  //pic_parameter_set_rbsp( )
-	nalu_type_aud        byte = 9  // access_unit_delimiter_rbsp( )
-	nalu_type_eoesq      byte = 10 //end_of_seq_rbsp( )
-	nalu_type_eostream   byte = 11 //end_of_stream_rbsp( )
-	nalu_type_filler     byte = 12 //filler_data_rbsp( )
+	nalu_type_slice    byte = 1  //slice_layer_without_partioning_rbsp() sliceheader
+	nalu_type_dpa      byte = 2  // slice_data_partition_a_layer_rbsp( ), slice_header
+	nalu_type_dpb      byte = 3  // slice_data_partition_b_layer_rbsp( )
+	nalu_type_dpc      byte = 4  // slice_data_partition_c_layer_rbsp( )
+	nalu_type_idr      byte = 5  // slice_layer_without_partitioning_rbsp( ),sliceheader
+	nalu_type_sei      byte = 6  //sei_rbsp( )
+	nalu_type_sps      byte = 7  //seq_parameter_set_rbsp( )
+	nalu_type_pps      byte = 8  //pic_parameter_set_rbsp( )
+	nalu_type_aud      byte = 9  // access_unit_delimiter_rbsp( )
+	nalu_type_eoesq    byte = 10 //end_of_seq_rbsp( )
+	nalu_type_eostream byte = 11 //end_of_stream_rbsp( )
+	nalu_type_filler   byte = 12 //filler_data_rbsp( )
 )
 
 const (
@@ -48,7 +41,6 @@ var startCode = []byte{0x00, 0x00, 0x00, 0x01}
 var naluAud = []byte{0x00, 0x00, 0x00, 0x01, 0x09, 0xf0}
 
 type Parser struct {
-	frameType    byte
 	specificInfo []byte
 	pps          *bytes.Buffer
 	w            io.Writer
@@ -56,9 +48,9 @@ type Parser struct {
 
 type sequenceHeader struct {
 	version              byte //8bits
-	avcProfileIndication byte //8bits
+	profileIndication    byte //8bits
 	profileCompatibility byte //8bits
-	avcLevelIndication   byte //8bits
+	levelIndication      byte //8bits
 	reserved1            byte //6bits
 	naluLen              byte //2bits
 	reserved2            byte //3bits
@@ -84,9 +76,9 @@ func (p *Parser) parseSpecificInfo(src []byte) error {
 	var pps []byte
 	var seq sequenceHeader
 	seq.version = src[0]
-	seq.avcProfileIndication = src[1]
+	seq.profileIndication = src[1]
 	seq.profileCompatibility = src[2]
-	seq.avcLevelIndication = src[3]
+	seq.levelIndication = src[3]
 	seq.reserved1 = src[4] & 0xfc
 	seq.naluLen = src[4]&0x03 + 1
 	seq.reserved2 = src[5] >> 5
@@ -127,7 +119,7 @@ func (p *Parser) isNaluHeader(src []byte) bool {
 
 func (p *Parser) naluSize(src []byte) (int, error) {
 	if len(src) < naluBytesLen {
-		return 0, fmt.Errorf("nalusizedata invalid")
+		return 0, naluHeaderInvalid
 	}
 	buf := src[:naluBytesLen]
 	size := 0
@@ -147,12 +139,10 @@ func (p *Parser) getAnnexbH264(src []byte) error {
 	if err != nil {
 		return err
 	}
-
 	index := 0
 	nalLen := 0
 	hasSpsPps := false
 	hasWriteSpsPps := false
-
 	for dataSize > 0 {
 		nalLen, err = p.naluSize(src[index:])
 		if err != nil {
