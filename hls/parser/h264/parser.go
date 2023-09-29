@@ -44,6 +44,7 @@ type Parser struct {
 	specificInfo []byte
 	pps          *bytes.Buffer
 	w            io.Writer
+	spsInfo      *SPS
 }
 
 type sequenceHeader struct {
@@ -89,7 +90,13 @@ func (p *Parser) parseSpecificInfo(src []byte) error {
 		return spsDataError
 	}
 	sps = append(sps, startCode...)
-	sps = append(sps, src[8:(8+seq.spsLen)]...)
+	spsBits := src[8:(8 + seq.spsLen)]
+	sps = append(sps, spsBits...)
+	// 可以用来获取分辨率等信息
+	spsRet, err := ParseSPSNALUnit(spsBits, true)
+	if err == nil {
+		p.spsInfo = spsRet
+	}
 	//get pps
 	tmpBuf := src[(8 + seq.spsLen):]
 	if len(tmpBuf) < 4 {
