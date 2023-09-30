@@ -40,8 +40,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
-github.com/LeeZXin/zsf v1.0.50 h1:uG1qAMaHRjxOizpw7Q7lITrwKtHAnn6vBF9dDkvesGs=
-github.com/LeeZXin/zsf v1.0.50/go.mod h1:HTHEoUAc11cf2WbqkpXZ7rmc4afy43dxE8IjyUZsB2k=
+github.com/LeeZXin/zsf v1.0.51 h1:ImidzM4cMJVR5rUXwknucS/MseGVWGoo+QLalWspRoc=
+github.com/LeeZXin/zsf v1.0.51/go.mod h1:HTHEoUAc11cf2WbqkpXZ7rmc4afy43dxE8IjyUZsB2k=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
@@ -456,8 +456,6 @@ github.com/pion/datachannel v1.5.5 h1:10ef4kwdjije+M9d7Xm9im2Y3O6A6ccQb0zcqZcJew
 github.com/pion/datachannel v1.5.5/go.mod h1:iMz+lECmfdCMqFRhXhcA/219B0SQlbpoR2V118yimL0=
 github.com/pion/dtls/v2 v2.2.7 h1:cSUBsETxepsCSFSxC3mc/aDo14qQLMSL+O6IjG28yV8=
 github.com/pion/dtls/v2 v2.2.7/go.mod h1:8WiMkebSHFD0T+dIU+UeBaoV7kDhOW5oDCzZ7WZ/F9s=
-github.com/pion/example-webrtc-applications v1.0.0 h1:2Md50nmbYqyZa/7rdQs+o/quL3vJtQQqnvPnve1WGmo=
-github.com/pion/example-webrtc-applications v1.0.0/go.mod h1:bF8s97iYIF475azjb/4yr4X6F2iZsaJaQWNqPH21QJA=
 github.com/pion/ice/v3 v3.0.1 h1:dwWGgIFDlYrKrCW13LihifuFabGw375hoU0347S9wNw=
 github.com/pion/ice/v3 v3.0.1/go.mod h1:j4tfTlj4aSEQN9gP3IdliSHcUTWTu9tlOZL0c59MFXo=
 github.com/pion/interceptor v0.1.19 h1:tq0TGBzuZQqipyBhaC1mVUCfCh8XjDKUuibq9rIl5t4=

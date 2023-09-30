@@ -94,6 +94,8 @@ func (r *TcpServer) ListenAndServe() {
 					err2 := threadutil.RunSafe(func() {
 						// 处理tcp连接
 						r.handleConn(newNetConn(conn, 4*1024))
+					}, func() {
+						conn.Close()
 					})
 					if err2 != nil {
 						logger.Logger.Error(err2)

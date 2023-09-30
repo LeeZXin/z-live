@@ -3,11 +3,14 @@ module github.com/LeeZXin/z-live
 go 1.20
 
 require (
-	github.com/LeeZXin/zsf v1.0.50
+	github.com/LeeZXin/zsf v1.0.51
 	github.com/at-wat/ebml-go v0.17.0
 	github.com/gin-gonic/gin v1.9.0
+	github.com/google/uuid v1.3.1
 	github.com/pion/interceptor v0.1.19
+	github.com/pion/logging v0.2.2
 	github.com/pion/rtp v1.8.1
+	github.com/pion/turn/v3 v3.0.1
 	github.com/pion/webrtc/v4 v4.0.0-beta.3
 	github.com/sirupsen/logrus v1.9.0
 	nhooyr.io/websocket v1.8.7
@@ -34,7 +37,6 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/consul/api v1.20.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.2.0 // indirect
@@ -60,9 +62,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
-	github.com/pion/example-webrtc-applications v1.0.0 // indirect
 	github.com/pion/ice/v3 v3.0.1 // indirect
-	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.8 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.10 // indirect
@@ -72,7 +72,6 @@ require (
 	github.com/pion/stun/v2 v2.0.0 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect
 	github.com/pion/transport/v3 v3.0.1 // indirect
-	github.com/pion/turn/v3 v3.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.1 // indirect

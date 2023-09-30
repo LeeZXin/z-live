@@ -57,16 +57,24 @@ func (c *cmdHandler) connect(vs []any) error {
 			logger.Logger.Debugf("amf obj: %v", objMap)
 			cmd := &connectCmd{}
 			if app, ok := objMap["app"]; ok {
-				cmd.App = app.(string)
+				if app != nil {
+					cmd.App = app.(string)
+				}
 			}
 			if flashVer, ok := objMap["flashVer"]; ok {
-				cmd.FlashVer = flashVer.(string)
+				if flashVer != nil {
+					cmd.FlashVer = flashVer.(string)
+				}
 			}
 			if tcurl, ok := objMap["tcUrl"]; ok {
-				cmd.TcUrl = tcurl.(string)
+				if tcurl != nil {
+					cmd.TcUrl = tcurl.(string)
+				}
 			}
 			if encoding, ok := objMap["objectEncoding"]; ok {
-				cmd.ObjectEncoding = int(encoding.(float64))
+				if encoding != nil {
+					cmd.ObjectEncoding = int(encoding.(float64))
+				}
 			}
 			c.cntCmd = cmd
 		}

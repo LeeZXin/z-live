@@ -4,14 +4,14 @@
 </body>
 <script src="/flv.js"></script>
 <script>
+    let player = null;
+    let checkInterval = null;
+
     function flv_load() {
         console.log('isSupported: ' + flvjs.isSupported());
         let mediaDataSource = {
             type: 'flv',
-            cors: true,
-            hasAudio: true,
-            hasVideo: true,
-            isLive: false,
+            isLive: true,
         };
         mediaDataSource['url'] = "{{videoPath}}";
         console.log('MediaDataSource', mediaDataSource);
@@ -30,11 +30,28 @@
         }
         player = flvjs.createPlayer(mediaDataSource, {
             enableWorker: false,
-            lazyLoadMaxDuration: 3 * 60,
-            seekType: 'range',
+            lazyLoad: false,
+            enableStashBuffer: false,
+            deferLoadAfterSourceOpen: false,
+            autoCleanupSourceBuffer: true,
+            autoCleanupMinBackwardDuration: 5,
+            autoCleanupMaxBackwardDuration: 10
         });
         player.attachMediaElement(element);
+        checkInterval = setInterval(() => {
+            if (!player) {
+                return
+            }
+            if (player.buffered.length) {
+                let end = player.buffered.end(0);
+                let diff = end - player.currentTime;
+                if (diff > 1) {
+                    player.currentTime = end - 0.5;
+                }
+            }
+        }, 2000)
         player.load();
+        player.play();
     }
 
     flv_load();
