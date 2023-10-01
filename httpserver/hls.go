@@ -88,7 +88,6 @@ func handleHlsRequest(c *gin.Context) {
 		return
 	}
 	if c.Request.URL.Path == "/key" {
-		logger.Logger.Info("getKey")
 		c.Data(http.StatusOK, "application/octet-stream", hls.EncryptAesKey)
 		return
 	}

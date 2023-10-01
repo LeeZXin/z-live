@@ -89,7 +89,6 @@ func (r *TcpServer) ListenAndServe() {
 					r.Shutdown()
 					return
 				}
-				logger.Logger.Infof("new client, connect remote: %s, local: %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 				go func() {
 					err2 := threadutil.RunSafe(func() {
 						// 处理tcp连接
