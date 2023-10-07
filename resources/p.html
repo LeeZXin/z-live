@@ -242,7 +242,7 @@
         env = getEnv();
         resizeDivList();
         let totalHeight = (divList.length - 1) * env.sideHeight;
-        if (Math.abs(divListScrollTop) + env.windowHeight > totalHeight) {
+        if (totalHeight > env.windowHeight && Math.abs(divListScrollTop) + env.windowHeight > totalHeight) {
             divListScrollTop = (totalHeight - env.windowHeight) * -1;
         }
         changePos(getTarget(currentMainId));
@@ -403,10 +403,13 @@
         let constraints = {}
         if (cameraDeviceId) {
             constraints['video'] = {
-                deviceId: cameraDeviceId
+                deviceId: cameraDeviceId,
+                frameRate: 24,
             };
         } else {
-            constraints['video'] = true;
+            constraints['video'] = {
+                frameRate: 24,
+            };
         }
         if (microphoneDeviceId) {
             constraints['audio'] = {
