@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -75,6 +76,20 @@ func NewSfuServer(addr string) *SfuServer {
 	// 多人通讯 html页面
 	engine.GET("/room.html", func(c *gin.Context) {
 		openHtml("./resources/room.html", c)
+	})
+	engine.GET("/p", func(c *gin.Context) {
+		roomId, b := c.GetQuery("r")
+		if !b {
+			c.String(http.StatusBadRequest, "invalid arguments")
+			return
+		}
+		file, err := os.ReadFile("./resources/p.html")
+		if err != nil {
+			c.String(http.StatusNotFound, "error")
+			return
+		}
+		str := strings.ReplaceAll(string(file), "{{roomId}}", roomId)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(str))
 	})
 	// dataChannel html页面
 	engine.GET("/data-channel.html", func(c *gin.Context) {

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>p</title>
+    <style>
+        ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        body {
+            position: relative;
+            background-color: lightgray;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .live {
+            min-height: 150px;
+            cursor: pointer;
+            position: absolute;
+            transition: all 500ms;
+            text-align: center;
+            color: white;
+            overflow: hidden;
+
+        }
+
+        .live > video {
+            width: 100%;
+            height: 100%;
+        }
+
+        .online-info {
+            padding: 14px;
+            font-size: 15px;
+            color: white;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 999;
+        }
+
+        #div-list {
+        }
+
+        #dev-info {
+            border-radius: 8px;
+            background-color: rgb(0, 0, 0, 0.6);
+            margin: 0;
+            padding: 0;
+            color: white;
+            font-size: 14px;
+            z-index: 1001;
+            position: fixed;
+            left: 6px;
+            top: 50px;
+            overflow: hidden;
+            width: 136px;
+            height: 96px;
+            transition: all .5s;
+        }
+
+        #dev-mask {
+            width: calc(100vw);
+            height: calc(100vh);
+            z-index: 1000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: rgb(0, 0, 0, 0.6);
+        }
+
+        #dev-info > li {
+            line-height: 48px;
+            height: 48px;
+            width: 100%;
+            padding-left: 44px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        #dev-info > li:hover {
+            background-color: black;
+        }
+
+        #dev-info > li:first-child:hover {
+            border-radius: 8px 8px 0 0;
+        }
+
+        #dev-info > li:last-child:hover {
+            border-radius: 0 0 8px 8px;
+        }
+
+        #dev-btn {
+            padding: 0 20px;
+            height: 40px;
+            line-height: 40px;
+            background-color: rgb(0, 0, 0, 0.6);
+            text-align: center;
+            color: white;
+            position: fixed;
+            left: 6px;
+            top: 50px;
+            display: none;
+            z-index: 999;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #main-disallow-warn {
+            display: none;
+            color: white;
+            padding: 0 10px;
+        }
+
+        .dev-list {
+            width: 400px;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border-radius: 4px;
+            z-index: 1000;
+            overflow: hidden;
+            min-height: 80px;
+            padding-bottom: 20px;
+        }
+
+        .dev-list-title {
+            line-height: 50px;
+            color: black;
+            font-size: 16px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .dev-list-close {
+            width: 100px;
+            height: 50px;
+            line-height: 50px;
+            position: absolute;
+            right: 16px;
+            top: 0;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: right;
+        }
+
+        .dev-list-content {
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+
+        .dev-list-content > li, #camera-switch, #microphone-switch {
+            line-height: 50px;
+            padding: 0 20px;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .dev-list-content > li:hover, #camera-switch:hover, #microphone-switch:hover {
+            background-color: #f0f0f0;
+        }
+
+        #camera-info,
+        #microphone-info {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+<div class="online-info">
+    <span>在线人数：</span>
+    <span id="people-count">0</span>
+</div>
+<div id="dev-mask" onclick="closeDeviceFnList()"></div>
+<div id="dev-btn" onclick="showDeviceFnList()">媒体设备</div>
+<ul id="dev-info">
+    <li onclick="showCameraInfo()">
+        摄像头
+    </li>
+    <li onclick="showMicrophoneInfo()">
+        麦克风
+    </li>
+</ul>
+<div class="dev-list" id="camera-info">
+    <div class="dev-list-title">摄像头</div>
+    <div class="dev-list-close" onclick="closeDeviceFnList()">关闭</div>
+    <div onclick="openOrCloseCamera()" id="camera-switch">关闭摄像头</div>
+    <ul class="dev-list-content" id="camera-list"></ul>
+</div>
+<div class="dev-list" id="microphone-info">
+    <div class="dev-list-title">麦克风</div>
+    <div class="dev-list-close" onclick="closeDeviceFnList()">关闭</div>
+    <div onclick="openOrCloseMicrophone()" id="microphone-switch">关闭麦克风</div>
+    <ul class="dev-list-content" id="microphone-list"></ul>
+</div>
+<div id="div-list"></div>
+<div id="video-list">
+    <div class="live" id="main-div">
+        <video id="main-video" width="100" height="100" autoplay></video>
+        <div id="main-warn">您已禁用媒体设备，无法传输您的音视频数据</div>
+    </div>
+</div>
+</body>
+<script src="/jq.js"></script>
+<script>
+    let env = getEnv();
+    let divListScrollTop = 0;
+    let currentMainId = "main-div";
+    let mainMediaStream = null;
+    let cameraOpenFlag = false;
+    let microphoneOpenFlag = false;
+    let cameraDevices = [];
+    let microphoneDevices = [];
+    let selectedCameraDevId = '';
+    let selectedMicrophoneId = '';
+    const roomId = '{{roomId}}';
+    const userId = generateRandomString(10);
+    const joinRoomUrl = `ws://${window.location.host}/signal-room`;
+    const forwardUrl = `ws://${window.location.host}/signal-forward`;
+    const disallowWarnMsg = '您已禁用媒体设备，无法传输您的音视频数据';
+    const noRoomIdMsg = '未识别到房间号';
+    let divList = [
+        {
+            divId: "main-div",
+            uid: userId
+        },
+    ];
+    window.addEventListener('resize', function (_) {
+        env = getEnv();
+        resizeDivList();
+        let totalHeight = (divList.length - 1) * env.sideHeight;
+        if (Math.abs(divListScrollTop) + env.windowHeight > totalHeight) {
+            divListScrollTop = (totalHeight - env.windowHeight) * -1;
+        }
+        changePos(getTarget(currentMainId));
+    });
+
+    function getEnv() {
+        let windowWidth = window.innerWidth;
+        let windowHeight = window.innerHeight;
+        let sidePosHeight = Math.max(~~(windowHeight * 0.2), 150);
+        return {
+            windowWidth: windowWidth,
+            windowHeight: windowHeight,
+            mainPosWidth: ~~(windowWidth * 0.8) + 'px',
+            mainPosHeight: windowHeight + 'px',
+            sidePosWidth: ~~(windowWidth * 0.2) + 'px',
+            sidePosHeight: sidePosHeight + 'px',
+            sideHeight: sidePosHeight
+        }
+    }
+
+    function toMainPos(target) {
+        target.style.width = env.mainPosWidth;
+        target.style.height = env.mainPosHeight;
+        target.style.lineHeight = env.mainPosHeight;
+        target.style.borderLeft = 'unset';
+        target.style.borderTop = 'unset';
+        target.style.fontSize = '24px';
+        target.style.left = "0";
+        target.style.top = "0";
+        target.style.backgroundColor = '#3b3b3b';
+    }
+
+    function getTarget(id) {
+        return document.getElementById(id);
+    }
+
+    function toSidePos(target, index) {
+        target.style.width = env.sidePosWidth;
+        target.style.height = env.sidePosHeight;
+        target.style.lineHeight = env.sidePosHeight;
+        target.style.left = env.mainPosWidth;
+        target.style.top = (env.sideHeight * index + divListScrollTop) + 'px';
+        target.style.backgroundColor = 'black';
+        target.style.fontSize = '16px';
+        target.style.borderLeft = '1px solid white';
+        if (index > 0) {
+            target.style.borderTop = '1px solid white';
+        } else {
+            target.style.borderTop = 'unset';
+        }
+    }
+
+    function changePos(target) {
+        toMainPos(target);
+        currentMainId = target.id;
+        changeSidePos();
+    }
+
+    function changeSidePos() {
+        let index = 0;
+        for (let i in divList) {
+            if (divList[i].divId !== currentMainId) {
+                toSidePos(getTarget(divList[i].divId), index);
+                index += 1;
+            }
+        }
+    }
+
+    function showCameraInfo() {
+        getTarget("camera-info").style.display = 'block';
+        closeMicrophoneInfo();
+    }
+
+    function closeCameraInfo() {
+        getTarget("camera-info").style.display = 'none';
+    }
+
+    function showMicrophoneInfo() {
+        getTarget("microphone-info").style.display = 'block';
+        closeCameraInfo();
+    }
+
+    function closeMicrophoneInfo() {
+        getTarget("microphone-info").style.display = 'none';
+    }
+
+    function showDeviceFnList() {
+        let btn = getTarget("dev-btn");
+        btn.style.display = 'none';
+        let info = getTarget("dev-info");
+        info.style.display = 'block';
+        setTimeout(() => {
+            info.style.width = '136px';
+            info.style.height = '96px';
+        }, 0)
+        let mask = getTarget("dev-mask");
+        mask.style.display = 'block';
+    }
+
+    function closeDeviceFnList() {
+        let info = getTarget("dev-info");
+        info.style.width = '0px';
+        info.style.height = '0px';
+        setTimeout(() => {
+            info.style.display = 'none';
+            let mask = getTarget("dev-mask");
+            mask.style.display = 'none';
+            let btn = getTarget("dev-btn");
+            btn.style.display = 'block';
+        }, 500)
+        closeCameraInfo();
+        closeMicrophoneInfo();
+    }
+
+    function resizeDivList() {
+        let target = getTarget("div-list");
+        target.style.width = env.sidePosWidth;
+        target.style.height = env.mainPosHeight;
+    }
+
+    function initDivList() {
+        let target = getTarget("div-list");
+        target.style.width = env.sidePosWidth;
+        target.style.height = env.mainPosHeight;
+        target.style.right = '0px';
+        target.style.top = '0px';
+        target.style.position = 'absolute';
+        target.style.zIndex = '998';
+        target.addEventListener('wheel', function (event) {
+            let totalHeight = (divList.length - 1) * env.sideHeight;
+            if (env.windowHeight < totalHeight) {
+                let tmp = divListScrollTop + event.deltaY * -1;
+                let sub = totalHeight - env.windowHeight;
+                if (tmp < 0 && Math.abs(tmp) < sub) {
+                    divListScrollTop = tmp;
+                    changeSidePos();
+                }
+            }
+        });
+        target.addEventListener('click', function (event) {
+            let t = Math.abs(divListScrollTop) + event.clientY;
+            let targetIndex = Math.floor(t / env.sideHeight);
+            let index = 0;
+            for (let i in divList) {
+                if (divList[i].divId !== currentMainId) {
+                    if (targetIndex === index) {
+                        changePos(getTarget(divList[i].divId));
+                        break;
+                    } else {
+                        index += 1;
+                    }
+                }
+            }
+        })
+    }
+
+    function openMedia(cameraDeviceId, microphoneDeviceId, callback) {
+        let constraints = {}
+        if (cameraDeviceId) {
+            constraints['video'] = {
+                deviceId: cameraDeviceId
+            };
+        } else {
+            constraints['video'] = true;
+        }
+        if (microphoneDeviceId) {
+            constraints['audio'] = {
+                deviceId: microphoneDeviceId
+            };
+        } else {
+            constraints['audio'] = true;
+        }
+        navigator.mediaDevices
+            .getUserMedia(constraints)
+            .then(stream => {
+                let t = stream.getVideoTracks();
+                if (t) {
+                    selectedCameraDevId = t[0].getSettings().deviceId;
+                }
+                let a = stream.getAudioTracks();
+                if (a) {
+                    selectedMicrophoneId = a[0].getSettings().deviceId;
+                }
+                getMediaDevList(devices => {
+                    cameraDevices = devices.filter(function (device) {
+                        return device.kind === "videoinput" && device.deviceId !== "";
+                    });
+                    microphoneDevices = devices.filter(function (device) {
+                        return device.kind === "audioinput" && device.deviceId !== "";
+                    });
+                    renderDevList();
+                })
+                callback(stream)
+            }).catch((error) => {
+            cameraOpenFlag = false;
+            if (error.name === 'NotAllowedError') {
+                showMainWarn(disallowWarnMsg);
+            } else {
+                console.log('获取音频设备列表失败：', error);
+            }
+        })
+    }
+
+    function showMainWarn(msg) {
+        getTarget("main-video").style.display = 'none';
+        let w = getTarget("main-warn")
+        w.style.display = 'block';
+        w.innerText = msg;
+    }
+
+    function getMediaDevList(callback) {
+        navigator.mediaDevices.enumerateDevices().then(stream => {
+            callback(stream)
+        }).catch((error) => {
+            console.log('获取音频设备列表失败：', error);
+        })
+    }
+
+    function openOrCloseCamera() {
+        if (mainMediaStream) {
+            if (cameraOpenFlag) {
+                closeCamera();
+            } else {
+                resumeCamera();
+            }
+        }
+    }
+
+    function openOrCloseMicrophone() {
+        if (mainMediaStream) {
+            if (microphoneOpenFlag) {
+                closeMicrophone();
+            } else {
+                resumeMicrophone();
+            }
+        }
+    }
+
+    function init() {
+        changePos(getTarget("main-div"));
+        initDivList();
+        closeDeviceFnList();
+        startMedia('', '');
+    }
+
+    function renderDevList() {
+        clearChildren("camera-list");
+        clearChildren("microphone-list");
+        cameraDevices.forEach(dev => {
+            let li = document.createElement("li");
+            let span = document.createElement("span")
+            span.innerText = dev.label;
+            li.appendChild(span);
+            if (dev.deviceId === selectedCameraDevId) {
+                span = document.createElement("span");
+                span.style.fontSize = '12px';
+                span.style.color = '#1e90ff';
+                span.innerText = '(已选择)';
+                li.appendChild(span);
+            }
+            li.addEventListener('click', function (_) {
+                switchCamera(dev.deviceId);
+            });
+            getTarget("camera-list").appendChild(li);
+        });
+        microphoneDevices.forEach(dev => {
+            let li = document.createElement("li");
+            let span = document.createElement("span")
+            span.innerText = dev.label;
+            li.appendChild(span);
+            if (dev.deviceId === selectedMicrophoneId) {
+                span = document.createElement("span");
+                span.style.fontSize = '12px';
+                span.style.color = '#1e90ff';
+                span.innerText = '(已选择)';
+                li.appendChild(span);
+            }
+            li.addEventListener('click', function (_) {
+                switchMicrophone(dev.deviceId);
+            });
+            getTarget("microphone-list").appendChild(li);
+        });
+    }
+
+    function switchCamera(deviceId) {
+        selectedCameraDevId = deviceId;
+        startMedia(selectedCameraDevId, selectedMicrophoneId);
+    }
+
+    function switchMicrophone(deviceId) {
+        selectedMicrophoneId = deviceId;
+        startMedia(selectedCameraDevId, selectedMicrophoneId);
+    }
+
+    function clearChildren(id) {
+        getTarget(id).innerHTML = '';
+    }
+
+    function closeCamera() {
+        if (mainMediaStream) {
+            mainMediaStream.getVideoTracks().forEach((track) => {
+                track.enabled = false;
+            });
+            cameraOpenFlag = false;
+            getTarget("camera-switch").innerText = "开启摄像头";
+        }
+    }
+
+    function resumeCamera() {
+        if (mainMediaStream) {
+            mainMediaStream.getVideoTracks().forEach((track) => {
+                track.enabled = true;
+            });
+            cameraOpenFlag = true;
+            getTarget("camera-switch").innerText = "关闭摄像头";
+        }
+    }
+
+    function closeMicrophone() {
+        if (mainMediaStream) {
+            mainMediaStream.getAudioTracks().forEach((track) => {
+                track.enabled = false;
+            });
+            microphoneOpenFlag = false;
+            getTarget("microphone-switch").innerText = "开启麦克风";
+        }
+    }
+
+    function resumeMicrophone() {
+        if (mainMediaStream) {
+            mainMediaStream.getAudioTracks().forEach((track) => {
+                track.enabled = true;
+            });
+            microphoneOpenFlag = true;
+            getTarget("microphone-switch").innerText = "关闭麦克风";
+        }
+    }
+
+    function startMedia(cameraDeviceId, microphoneDeviceId) {
+        openMedia(cameraDeviceId, microphoneDeviceId, (stream) => {
+            closeStream();
+            cameraOpenFlag = true;
+            microphoneOpenFlag = true;
+            let v = getTarget("main-video");
+            v.srcObject = stream;
+            mainMediaStream = stream;
+            getTarget("camera-switch").innerText = "关闭摄像头";
+            if (!joinRoom()) {
+                closeStream();
+            }
+        })
+    }
+
+    // 随机字符串
+    function generateRandomString(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * charactersLength);
+            result += characters.charAt(randomIndex);
+        }
+
+        return result;
+    }
+
+    function initPeerConnection(userId, isMain) {
+        let url;
+        if (isMain) {
+            url = joinRoomUrl + "?user=" + userId + "&room=" + roomId;
+        } else {
+            url = forwardUrl + "?user=" + userId + "&room=" + roomId;
+        }
+        let peerConnection = new RTCPeerConnection();
+        let websocketConnection = new WebSocket(url)
+        websocketConnection.onmessage = msg => {
+            let content = JSON.parse(msg.data)
+            if (!content) {
+                return
+            }
+            if (content.candidate) {
+                peerConnection.addIceCandidate(content)
+            } else {
+                peerConnection.setRemoteDescription(content)
+            }
+        }
+        peerConnection.addTransceiver('video', {
+            direction: 'recvonly'
+        })
+        peerConnection.addTransceiver('audio', {
+            direction: 'recvonly'
+        })
+        peerConnection.oniceconnectionstatechange = _ => {
+            console.log("peerConnection ice state change:", peerConnection.iceConnectionState)
+        }
+        peerConnection.onicecandidate = event => {
+            if (event.candidate && event.candidate.candidate !== "") {
+                websocketConnection.send(JSON.stringify({
+                    msgType: "candidate",
+                    content: JSON.stringify(event.candidate)
+                }))
+            }
+        }
+        websocketConnection.onopen = () => {
+            if (isMain) {
+                mainMediaStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track);
+                });
+            }
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer)
+                websocketConnection.send(JSON.stringify({
+                    msgType: "offer",
+                    content: JSON.stringify(offer)
+                }))
+            }).catch(error => {
+                console.log("create offer failed:", error)
+            })
+        }
+        return peerConnection;
+    }
+
+    function joinRoom() {
+        if (!roomId) {
+            showMainWarn(noRoomIdMsg);
+            return false;
+        }
+        initPeerConnection(userId, true);
+        setTimeout(() => {
+            getMemberList(roomId)
+        }, 5000);
+        return true;
+    }
+
+    function closeStream() {
+        if (mainMediaStream) {
+            mainMediaStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            getTarget("main-video").srcObject = null;
+        }
+    }
+
+    function getMemberList(roomId) {
+        $.get("/getMemberList?room=" + roomId, resp => {
+            let userIdList = resp.data;
+            refreshPeopleCount(userIdList.length);
+            let addList = userIdList.filter(u => {
+                for (let i in divList) {
+                    let t = divList[i];
+                    if (t.uid === u) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            addList.forEach(t => {
+                let member = {
+                    divId: sideDivId(t),
+                    uid: t
+                }
+                divList.push(member);
+                initOtherMemberConnection(member);
+            })
+            let removeList = [];
+            let newDivList = [];
+            divList.forEach(t => {
+                for(let i in userIdList) {
+                    if (t.uid === userIdList[i]) {
+                        newDivList.push(t);
+                        return;
+                    }
+                }
+                removeList.push(t);
+            })
+            divList = newDivList;
+            removeList.forEach(t => {
+                getTarget('video-list').removeChild(getTarget(t.divId));
+            });
+            setTimeout(() => {
+                getMemberList(roomId)
+            }, 5000)
+        })
+    }
+
+    function sideDivId(id) {
+        return 'side-div-' + id;
+    }
+
+    function refreshPeopleCount(count) {
+        getTarget('people-count').innerText = count + '';
+    }
+
+    function initOtherMemberConnection(member) {
+        let peerConnection = initPeerConnection(member.uid, false);
+        peerConnection.ontrack = event => {
+            const kind = event.track.kind;
+            if (kind === 'video' || kind === 'audio') {
+                const el = document.createElement(kind)
+                el.srcObject = event.streams[0]
+                el.autoplay = true;
+                if (kind === 'audio') {
+                    el.style.display = 'none';
+                }
+                let div = getTarget(member.divId);
+                if (div) {
+                    div.appendChild(el)
+                } else {
+                    div = document.createElement("div");
+                    div.className = "live";
+                    div.id = member.divId;
+                    div.appendChild(el)
+                    getTarget('video-list').appendChild(div)
+                }
+                changeSidePos();
+            }
+        }
+    }
+
+    init();
+</script>
+
+</html>
