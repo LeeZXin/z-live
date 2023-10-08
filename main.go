@@ -9,12 +9,14 @@ import (
 
 func main() {
 	startRtmp()
-	startHls()
 	startFlv()
-	startMp4()
+	/*
+		startHls()
 
-	startTurn()
-	startP2pSignal()
+		startMp4()
+
+		startTurn()
+		startP2pSignal()*/
 	startSfu()
 	zsf.Run()
 }

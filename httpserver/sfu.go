@@ -3,6 +3,8 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"github.com/LeeZXin/z-live/flv"
+	"github.com/LeeZXin/z-live/rtmp"
 	"github.com/LeeZXin/z-live/sfu"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/quit"
@@ -11,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +47,34 @@ func NewSfuServer(addr string) *SfuServer {
 		startOnce: sync.Once{},
 	}
 	engine := gin.New()
+	engine.Use(func(c *gin.Context) {
+		u := c.Request.URL.Path
+		if path.Ext(u) != flvSuffix {
+			c.Next()
+			return
+		}
+		key, err := parseFlv(u)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		pub, ok := rtmp.FindPublisher(key)
+		if !ok {
+			c.String(http.StatusNotFound, "invalid path")
+			return
+		}
+		writer := c.Writer
+		writer.Header().Set("Access-Control-Allow-Origin", "*")
+		writer.Header().Set("Content-Type", "video/x-flv")
+		writer.Header().Set("Transfer-Encoding", "chunked")
+		writer.WriteHeader(http.StatusOK)
+		httpWriter, err := flv.NewHttpWriter(writer)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "init failed")
+		}
+		pub.Register(httpWriter)
+		httpWriter.Wait()
+	})
 	// 创建data-channel的信令
 	engine.Any("/signal-data-channel", ws.RegisterWebsocketService(func() ws.Service {
 		return sfu.NewSignalService(sfu.NewDataChannelService())
@@ -98,6 +129,10 @@ func NewSfuServer(addr string) *SfuServer {
 	// jq.js
 	engine.GET("/jq.js", func(c *gin.Context) {
 		openHtml("./resources/jq.js", c)
+	})
+	// flv.js
+	engine.GET("/flv.js", func(c *gin.Context) {
+		openHtml("./resources/flv.js", c)
 	})
 	// 获取房间成员名单
 	// 浏览器通过定时获取成员名单来创建多个<video></video>

@@ -47,7 +47,8 @@ func NewFileWriter(fileName string) (*Writer, error) {
 }
 
 type httpWriterWrapper struct {
-	writer http.ResponseWriter
+	writer  http.ResponseWriter
+	flusher http.Flusher
 }
 
 func (w *httpWriterWrapper) Write(content []byte) (int, error) {
@@ -59,7 +60,9 @@ func (w *httpWriterWrapper) Write(content []byte) (int, error) {
 }
 
 func (w *httpWriterWrapper) flush() {
-	w.writer.(http.Flusher).Flush()
+	if w.flusher != nil {
+		w.flusher.Flush()
+	}
 }
 
 func (w *httpWriterWrapper) Close() error {
@@ -68,7 +71,8 @@ func (w *httpWriterWrapper) Close() error {
 
 func NewHttpWriter(writer http.ResponseWriter) (*Writer, error) {
 	return newWriter(&httpWriterWrapper{
-		writer: writer,
+		writer:  writer,
+		flusher: writer.(http.Flusher),
 	}, httpMode)
 }
 
