@@ -260,6 +260,9 @@
     }
 
     function toMainPos(target) {
+        if (!target) {
+            return;
+        }
         target.style.width = env.mainPosWidth;
         target.style.height = env.mainPosHeight;
         target.style.lineHeight = env.mainPosHeight;
@@ -633,12 +636,12 @@
         return result;
     }
 
-    function initPeerConnection(userId, isMain) {
+    function initPeerConnection(uid, isMain) {
         let url;
         if (isMain) {
-            url = joinRoomUrl + "?user=" + userId + "&room=" + roomId;
+            url = joinRoomUrl + "?user=" + uid + "&room=" + roomId;
         } else {
-            url = forwardUrl + "?user=" + userId + "&room=" + roomId;
+            url = forwardUrl + "?user=" + uid + "&room=" + roomId;
         }
         let peerConnection = new RTCPeerConnection();
         let websocketConnection = new WebSocket(url)
@@ -661,9 +664,11 @@
         })
         peerConnection.oniceconnectionstatechange = _ => {
             if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'closed') {
-                delete peerConnectionMap[userId];
-                delete mediaStreamMap[userId];
-                console.log("remove", userId);
+                if (uid !== userId) {
+                    delete peerConnectionMap[uid];
+                    delete mediaStreamMap[uid];
+                    console.log("remove", uid);
+                }
                 // 重新连接
                 if (isMain) {
                     joinRoom();
@@ -694,7 +699,7 @@
                 console.log("create offer failed:", error)
             })
         }
-        peerConnectionMap[userId] = peerConnection;
+        peerConnectionMap[uid] = peerConnection;
         return peerConnection;
     }
 
@@ -741,7 +746,7 @@
             let newDivList = [];
             divList.forEach(t => {
                 for (let i in userIdList) {
-                    if (t.uid === userIdList[i]) {
+                    if (t.uid === userIdList[i] || t.uid === userId) {
                         newDivList.push(t);
                         return;
                     }
@@ -753,6 +758,8 @@
                 getTarget('video-list').removeChild(getTarget(t.divId));
                 if (t.divId === currentMainId) {
                     changePos(getTarget("main-div"));
+                } else {
+                    changeSidePos();
                 }
             });
             setTimeout(() => {
