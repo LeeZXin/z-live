@@ -59,7 +59,7 @@ func NewSfuServer(addr string) *SfuServer {
 	}))
 	// 多人通讯进入房间
 	engine.Any("/signal-room", ws.RegisterWebsocketService(func() ws.Service {
-		return sfu.NewSignalService(sfu.NewJoinTrackService())
+		return sfu.NewSignalService(sfu.NewJoinRoomTrackService())
 	}, ws.Config{
 		MsgQueueSize: 8,
 	}))

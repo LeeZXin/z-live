@@ -3,20 +3,30 @@ package sfu
 import (
 	"fmt"
 	"github.com/LeeZXin/z-live/webm"
-	"github.com/LeeZXin/zsf/logger"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
+	"golang.org/x/net/context"
 	"net/http"
+	"sync"
 	"time"
 )
 
 // SaveToWebmTrackService 保存音视频数据到webm
 type SaveToWebmTrackService struct {
-	saver *webm.Saver
-	conn  *webrtc.PeerConnection
+	saver    *webm.Saver
+	conn     *webrtc.PeerConnection
+	ctx      context.Context
+	cancelFn context.CancelFunc
+	rtcpOnce sync.Once
 }
 
 func NewSaveToWebmTrackService() RTPService {
-	return &SaveToWebmTrackService{}
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	return &SaveToWebmTrackService{
+		ctx:      ctx,
+		cancelFn: cancelFunc,
+		rtcpOnce: sync.Once{},
+	}
 }
 
 func (s *SaveToWebmTrackService) IsMediaRecvService() bool {
@@ -36,6 +46,20 @@ func (s *SaveToWebmTrackService) AuthenticateAndInit(*http.Request) error {
 func (s *SaveToWebmTrackService) OnDataChannel(*webrtc.DataChannel) {}
 
 func (s *SaveToWebmTrackService) OnTrack(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+	s.rtcpOnce.Do(func() {
+		go func() {
+			ticker := time.NewTicker(time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					s.conn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+				case <-s.ctx.Done():
+					return
+				}
+			}
+		}()
+	})
 	for {
 		rtp, _, err := track.ReadRTP()
 		if err != nil {
@@ -43,13 +67,9 @@ func (s *SaveToWebmTrackService) OnTrack(track *webrtc.TrackRemote, _ *webrtc.RT
 		}
 		switch track.Kind() {
 		case webrtc.RTPCodecTypeAudio:
-			if err = s.saver.PushOpus(rtp); err != nil {
-				logger.Logger.Error(err.Error())
-			}
+			s.saver.PushOpus(rtp)
 		case webrtc.RTPCodecTypeVideo:
-			if err = s.saver.PushVP8(rtp); err != nil {
-				logger.Logger.Error(err.Error())
-			}
+			s.saver.PushVP8(rtp)
 		}
 	}
 }
@@ -57,5 +77,6 @@ func (s *SaveToWebmTrackService) OnTrack(track *webrtc.TrackRemote, _ *webrtc.RT
 func (s *SaveToWebmTrackService) OnClose() {
 	if s.saver != nil {
 		s.saver.Close()
+		s.cancelFn()
 	}
 }

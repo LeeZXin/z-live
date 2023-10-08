@@ -8,13 +8,13 @@ import (
 )
 
 func main() {
-	/*startRtmp()
+	startRtmp()
 	startHls()
 	startFlv()
 	startMp4()
 
 	startTurn()
-	startP2pSignal()*/
+	startP2pSignal()
 	startSfu()
 	zsf.Run()
 }

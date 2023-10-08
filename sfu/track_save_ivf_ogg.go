@@ -65,11 +65,11 @@ func (s *SaveIvfOggTrackService) OnTrack(track *webrtc.TrackRemote, receiver *we
 func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
 	defer i.Close()
 	for {
-		rtpPacket, _, err := track.ReadRTP()
+		p, _, err := track.ReadRTP()
 		if err != nil {
 			return
 		}
-		if err = i.WriteRTP(rtpPacket); err != nil {
+		if err = i.WriteRTP(p); err != nil {
 			return
 		}
 	}

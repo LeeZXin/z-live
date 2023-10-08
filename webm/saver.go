@@ -20,8 +20,8 @@ type Saver struct {
 func NewSaver(fileName string) *Saver {
 	return &Saver{
 		fileName:     fileName,
-		audioBuilder: samplebuilder.New(10, &codecs.OpusPacket{}, 48000),
-		videoBuilder: samplebuilder.New(10, &codecs.VP8Packet{}, 90000),
+		audioBuilder: samplebuilder.New(50, &codecs.OpusPacket{}, 48000),
+		videoBuilder: samplebuilder.New(50, &codecs.VP8Packet{}, 90000),
 	}
 }
 

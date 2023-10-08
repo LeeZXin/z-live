@@ -410,11 +410,11 @@
         if (cameraDeviceId) {
             constraints['video'] = {
                 deviceId: cameraDeviceId,
-                frameRate: 24,
+                frameRate: 16,
             };
         } else {
             constraints['video'] = {
-                frameRate: 24,
+                frameRate: 16,
             };
         }
         if (microphoneDeviceId) {
@@ -429,7 +429,8 @@
                 echoCancellation: true,
             };
         }
-        navigator.mediaDevices
+        navigator
+            .mediaDevices
             .getUserMedia(constraints)
             .then(stream => {
                 let t = stream.getVideoTracks();

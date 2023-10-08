@@ -1,10 +1,30 @@
 package sfu
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"github.com/LeeZXin/zsf/logger"
 	"github.com/google/uuid"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
+	"github.com/pion/webrtc/v4/pkg/media/ivfwriter"
+	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+type rtpPacket struct {
+	mimeType string
+	kind     webrtc.RTPCodecType
+	packet   *rtp.Packet
+}
+
+const (
+	saveToDiskFlag = true
 )
 
 // JoinRoomTrackService 多人音视频通话加入房间service
@@ -13,10 +33,27 @@ type JoinRoomTrackService struct {
 	roomId string
 	userId string
 	member *Member
+
+	oggFile  *oggwriter.OggWriter
+	ivfFile  *ivfwriter.IVFWriter
+	rtcpOnce sync.Once
+
+	ctx      context.Context
+	cancelFn context.CancelFunc
+	saveChan chan *rtpPacket
 }
 
-func NewJoinTrackService() RTPService {
-	return &JoinRoomTrackService{}
+func NewJoinRoomTrackService() RTPService {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	ret := &JoinRoomTrackService{
+		rtcpOnce: sync.Once{},
+		ctx:      ctx,
+		cancelFn: cancelFunc,
+	}
+	if saveToDiskFlag {
+		ret.saveChan = make(chan *rtpPacket, 1024)
+	}
+	return ret
 }
 
 func (s *JoinRoomTrackService) IsMediaRecvService() bool {
@@ -42,12 +79,58 @@ func (s *JoinRoomTrackService) AuthenticateAndInit(request *http.Request) error 
 	}
 	s.roomId = roomId
 	s.userId = userId
+	if saveToDiskFlag {
+		now := time.Now().UnixMicro()
+		oggFileName := fmt.Sprintf("%s_%d.ogg", userId, now)
+		oggFile, err := oggwriter.New(oggFileName, 48000, 2)
+		if err != nil {
+			return err
+		}
+		s.oggFile = oggFile
+		ivfFileName := fmt.Sprintf("%s_%d.ivf", userId, now)
+		ivfFile, err := ivfwriter.New(ivfFileName)
+		if err != nil {
+			return err
+		}
+		s.ivfFile = ivfFile
+		go func() {
+			for {
+				select {
+				case p, ok := <-s.saveChan:
+					if !ok {
+						return
+					}
+					if strings.EqualFold(p.mimeType, webrtc.MimeTypeOpus) {
+						s.oggFile.WriteRTP(p.packet)
+					} else if strings.EqualFold(p.mimeType, webrtc.MimeTypeVP8) {
+						s.ivfFile.WriteRTP(p.packet)
+					}
+				}
+			}
+		}()
+	}
 	return nil
 }
 
 func (s *JoinRoomTrackService) OnDataChannel(*webrtc.DataChannel) {}
 
 func (s *JoinRoomTrackService) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+	if saveToDiskFlag {
+		if webrtc.RTPCodecTypeVideo == remote.Kind() {
+			go func() {
+				ticker := time.NewTicker(time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ticker.C:
+						s.conn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remote.SSRC())}})
+					case <-s.ctx.Done():
+						return
+					}
+				}
+			}()
+		}
+	}
 	uid := uuid.NewString()
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability, uid, uid+"_stream")
 	if err != nil {
@@ -63,16 +146,24 @@ func (s *JoinRoomTrackService) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTP
 	if s.member.AudioTrack() != nil && s.member.VideoTrack() != nil {
 		s.member.Room().AddMember(s.member)
 	}
-	sendToTrack(remote, localTrack)
+	s.sendToTrack(remote, localTrack)
 }
 
-func sendToTrack(remote *webrtc.TrackRemote, track *webrtc.TrackLocalStaticRTP) {
+func (s *JoinRoomTrackService) sendToTrack(remote *webrtc.TrackRemote, track *webrtc.TrackLocalStaticRTP) {
 	for {
-		rtpPacket, _, err := remote.ReadRTP()
+		p, _, err := remote.ReadRTP()
 		if err != nil {
 			return
 		}
-		if err = track.WriteRTP(rtpPacket); err != nil {
+		if saveToDiskFlag {
+			s.saveChan <- &rtpPacket{
+				mimeType: remote.Codec().MimeType,
+				kind:     remote.Kind(),
+				packet:   p.Clone(),
+			}
+		}
+		if err = track.WriteRTP(p); err != nil {
+			logger.Logger.Error(err.Error())
 			return
 		}
 	}
@@ -84,6 +175,16 @@ func (s *JoinRoomTrackService) OnClose() {
 		if room != nil {
 			room.DelMember(s.member)
 		}
+	}
+	s.cancelFn()
+	if s.saveChan != nil {
+		close(s.saveChan)
+	}
+	if s.oggFile != nil {
+		s.oggFile.Close()
+	}
+	if s.ivfFile != nil {
+		s.ivfFile.Close()
 	}
 }
 
