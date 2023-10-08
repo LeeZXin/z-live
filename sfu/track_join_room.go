@@ -111,6 +111,10 @@ func (s *RoomForwardTrackService) OnNewPeerConnection(conn *webrtc.PeerConnectio
 		conn.Close()
 		return
 	}
+	if !s.targetMember.AddListener(conn) {
+		conn.Close()
+		return
+	}
 }
 
 func (s *RoomForwardTrackService) AuthenticateAndInit(request *http.Request) error {

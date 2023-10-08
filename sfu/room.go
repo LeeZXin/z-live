@@ -157,17 +157,21 @@ func (r *Room) DelMember(member *Member) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	member.LeaveRoom()
 	delete(r.members, member.UserId())
 }
 
 // Member 成员
 type Member struct {
-	mu         sync.RWMutex
 	conn       *webrtc.PeerConnection
 	audioTrack atomic.Value
 	videoTrack atomic.Value
 	room       atomic.Value
 	userId     string
+
+	listeners []*webrtc.PeerConnection
+	mu        sync.Mutex
+	isDel     bool
 }
 
 // NewMember 创建一个成员
@@ -176,9 +180,32 @@ func NewMember(conn *webrtc.PeerConnection, userId string) *Member {
 		return nil
 	}
 	return &Member{
-		userId: userId,
-		mu:     sync.RWMutex{},
-		conn:   conn,
+		userId:    userId,
+		conn:      conn,
+		listeners: make([]*webrtc.PeerConnection, 0, 8),
+		mu:        sync.Mutex{},
+	}
+}
+
+func (m *Member) AddListener(c *webrtc.PeerConnection) bool {
+	if c == nil {
+		return false
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.isDel {
+		return false
+	}
+	m.listeners = append(m.listeners, c)
+	return true
+}
+
+func (m *Member) LeaveRoom() {
+	m.mu.Lock()
+	m.isDel = true
+	m.mu.Unlock()
+	for _, listener := range m.listeners {
+		listener.Close()
 	}
 }
 

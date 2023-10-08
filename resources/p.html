@@ -113,12 +113,6 @@
             font-size: 14px;
         }
 
-        #main-disallow-warn {
-            display: none;
-            color: white;
-            padding: 0 10px;
-        }
-
         .dev-list {
             width: 400px;
             position: fixed;
@@ -220,12 +214,17 @@
     let divListScrollTop = 0;
     let currentMainId = "main-div";
     let mainMediaStream = null;
-    let cameraOpenFlag = false;
-    let microphoneOpenFlag = false;
+    let currentCameraState = false;
+    let cameraStateBeforeVisibilityChange = false;
+    let currentMicrophoneState = false;
+    let microphoneStateBeforeVisibilityChange = false;
     let cameraDevices = [];
     let microphoneDevices = [];
     let selectedCameraDevId = '';
     let selectedMicrophoneId = '';
+    let peerConnectionMap = {};
+    let mediaStreamMap = {};
+    let mainPeerConnection = null;
     const roomId = '{{roomId}}';
     const userId = generateRandomString(10);
     const joinRoomUrl = `ws://${window.location.host}/signal-room`;
@@ -238,13 +237,10 @@
             uid: userId
         },
     ];
+
     window.addEventListener('resize', function (_) {
         env = getEnv();
         resizeDivList();
-        let totalHeight = (divList.length - 1) * env.sideHeight;
-        if (totalHeight > env.windowHeight && Math.abs(divListScrollTop) + env.windowHeight > totalHeight) {
-            divListScrollTop = (totalHeight - env.windowHeight) * -1;
-        }
         changePos(getTarget(currentMainId));
     });
 
@@ -280,6 +276,9 @@
     }
 
     function toSidePos(target, index) {
+        if (!target) {
+            return
+        }
         target.style.width = env.sidePosWidth;
         target.style.height = env.sidePosHeight;
         target.style.lineHeight = env.sidePosHeight;
@@ -358,6 +357,10 @@
     }
 
     function resizeDivList() {
+        let totalHeight = (divList.length - 1) * env.sideHeight;
+        if (totalHeight > env.windowHeight && Math.abs(divListScrollTop) + env.windowHeight > totalHeight) {
+            divListScrollTop = (totalHeight - env.windowHeight) * -1;
+        }
         let target = getTarget("div-list");
         target.style.width = env.sidePosWidth;
         target.style.height = env.mainPosHeight;
@@ -413,10 +416,15 @@
         }
         if (microphoneDeviceId) {
             constraints['audio'] = {
-                deviceId: microphoneDeviceId
+                deviceId: microphoneDeviceId,
+                noiseSuppression: true,
+                echoCancellation: true,
             };
         } else {
-            constraints['audio'] = true;
+            constraints['audio'] = {
+                noiseSuppression: true,
+                echoCancellation: true,
+            };
         }
         navigator.mediaDevices
             .getUserMedia(constraints)
@@ -438,15 +446,16 @@
                     });
                     renderDevList();
                 })
-                callback(stream)
-            }).catch((error) => {
-            cameraOpenFlag = false;
-            if (error.name === 'NotAllowedError') {
-                showMainWarn(disallowWarnMsg);
-            } else {
-                console.log('获取音频设备列表失败：', error);
-            }
-        })
+                callback(stream);
+            })
+            .catch((error) => {
+                currentCameraState = false;
+                if (error.name === 'NotAllowedError') {
+                    showMainWarn(disallowWarnMsg);
+                } else {
+                    console.log('获取音频设备列表失败：', error);
+                }
+            })
     }
 
     function showMainWarn(msg) {
@@ -466,7 +475,7 @@
 
     function openOrCloseCamera() {
         if (mainMediaStream) {
-            if (cameraOpenFlag) {
+            if (currentCameraState) {
                 closeCamera();
             } else {
                 resumeCamera();
@@ -476,7 +485,7 @@
 
     function openOrCloseMicrophone() {
         if (mainMediaStream) {
-            if (microphoneOpenFlag) {
+            if (currentMicrophoneState) {
                 closeMicrophone();
             } else {
                 resumeMicrophone();
@@ -549,7 +558,7 @@
             mainMediaStream.getVideoTracks().forEach((track) => {
                 track.enabled = false;
             });
-            cameraOpenFlag = false;
+            currentCameraState = false;
             getTarget("camera-switch").innerText = "开启摄像头";
         }
     }
@@ -559,7 +568,7 @@
             mainMediaStream.getVideoTracks().forEach((track) => {
                 track.enabled = true;
             });
-            cameraOpenFlag = true;
+            currentCameraState = true;
             getTarget("camera-switch").innerText = "关闭摄像头";
         }
     }
@@ -569,7 +578,7 @@
             mainMediaStream.getAudioTracks().forEach((track) => {
                 track.enabled = false;
             });
-            microphoneOpenFlag = false;
+            currentMicrophoneState = false;
             getTarget("microphone-switch").innerText = "开启麦克风";
         }
     }
@@ -579,7 +588,7 @@
             mainMediaStream.getAudioTracks().forEach((track) => {
                 track.enabled = true;
             });
-            microphoneOpenFlag = true;
+            currentMicrophoneState = true;
             getTarget("microphone-switch").innerText = "关闭麦克风";
         }
     }
@@ -587,14 +596,25 @@
     function startMedia(cameraDeviceId, microphoneDeviceId) {
         openMedia(cameraDeviceId, microphoneDeviceId, (stream) => {
             closeStream();
-            cameraOpenFlag = true;
-            microphoneOpenFlag = true;
-            let v = getTarget("main-video");
-            v.srcObject = stream;
+            currentCameraState = true;
+            currentMicrophoneState = true;
+            getTarget("main-video").srcObject = new MediaStream(stream.getVideoTracks());
             mainMediaStream = stream;
             getTarget("camera-switch").innerText = "关闭摄像头";
-            if (!joinRoom()) {
-                closeStream();
+            if (!mainPeerConnection) {
+                if (!joinRoom()) {
+                    closeStream();
+                }
+            } else {
+                stream.getTracks().forEach(track => {
+                    let senders = mainPeerConnection.getSenders();
+                    let sender = senders.find(t => {
+                        return t.track.kind === track.kind;
+                    });
+                    if (sender) {
+                        sender.replaceTrack(track);
+                    }
+                });
             }
         })
     }
@@ -640,7 +660,15 @@
             direction: 'recvonly'
         })
         peerConnection.oniceconnectionstatechange = _ => {
-            console.log("peerConnection ice state change:", peerConnection.iceConnectionState)
+            if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'closed') {
+                delete peerConnectionMap[userId];
+                delete mediaStreamMap[userId];
+                console.log("remove", userId);
+                // 重新连接
+                if (isMain) {
+                    joinRoom();
+                }
+            }
         }
         peerConnection.onicecandidate = event => {
             if (event.candidate && event.candidate.candidate !== "") {
@@ -666,6 +694,7 @@
                 console.log("create offer failed:", error)
             })
         }
+        peerConnectionMap[userId] = peerConnection;
         return peerConnection;
     }
 
@@ -674,9 +703,10 @@
             showMainWarn(noRoomIdMsg);
             return false;
         }
-        initPeerConnection(userId, true);
+        mainPeerConnection = initPeerConnection(userId, true);
+        console.log("join", userId);
         setTimeout(() => {
-            getMemberList(roomId)
+            getMemberList();
         }, 5000);
         return true;
     }
@@ -690,18 +720,14 @@
         }
     }
 
-    function getMemberList(roomId) {
+    function getMemberList() {
         $.get("/getMemberList?room=" + roomId, resp => {
             let userIdList = resp.data;
             refreshPeopleCount(userIdList.length);
             let addList = userIdList.filter(u => {
-                for (let i in divList) {
-                    let t = divList[i];
-                    if (t.uid === u) {
-                        return false;
-                    }
-                }
-                return true;
+                return !divList.some(t => {
+                    return t.uid === u;
+                });
             });
             addList.forEach(t => {
                 let member = {
@@ -714,7 +740,7 @@
             let removeList = [];
             let newDivList = [];
             divList.forEach(t => {
-                for(let i in userIdList) {
+                for (let i in userIdList) {
                     if (t.uid === userIdList[i]) {
                         newDivList.push(t);
                         return;
@@ -725,9 +751,12 @@
             divList = newDivList;
             removeList.forEach(t => {
                 getTarget('video-list').removeChild(getTarget(t.divId));
+                if (t.divId === currentMainId) {
+                    changePos(getTarget("main-div"));
+                }
             });
             setTimeout(() => {
-                getMemberList(roomId)
+                getMemberList();
             }, 5000)
         })
     }
@@ -744,25 +773,53 @@
         let peerConnection = initPeerConnection(member.uid, false);
         peerConnection.ontrack = event => {
             const kind = event.track.kind;
-            if (kind === 'video' || kind === 'audio') {
-                const el = document.createElement(kind)
-                el.srcObject = event.streams[0]
+            let ms = mediaStreamMap[member.uid];
+            if (!ms) {
+                ms = mediaStreamMap[member.uid] = {};
+            }
+            ms[kind] = event.track;
+            if ('video' in ms && 'audio' in ms) {
+                let stream = new MediaStream();
+                stream.addTrack(ms['video']);
+                stream.addTrack(ms['audio']);
+                const el = document.createElement('video')
+                el.srcObject = stream;
                 el.autoplay = true;
-                if (kind === 'audio') {
-                    el.style.display = 'none';
-                }
-                let div = getTarget(member.divId);
-                if (div) {
-                    div.appendChild(el)
-                } else {
-                    div = document.createElement("div");
-                    div.className = "live";
-                    div.id = member.divId;
-                    div.appendChild(el)
-                    getTarget('video-list').appendChild(div)
-                }
+                const div = document.createElement("div");
+                div.className = "live";
+                div.id = member.divId;
+                div.appendChild(el);
+                getTarget('video-list').appendChild(div);
                 changeSidePos();
             }
+        }
+        peerConnectionMap[member.uid] = peerConnection;
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+            cameraStateBeforeVisibilityChange = currentCameraState;
+            if (cameraStateBeforeVisibilityChange) {
+                closeCamera();
+            }
+            microphoneStateBeforeVisibilityChange = currentMicrophoneState;
+            if (microphoneStateBeforeVisibilityChange) {
+                closeMicrophone();
+            }
+        } else if (document.visibilityState === 'visible') {
+            if (cameraStateBeforeVisibilityChange) {
+                resumeCamera();
+            }
+            if (microphoneStateBeforeVisibilityChange) {
+                resumeMicrophone();
+            }
+        }
+    });
+
+    window.onbeforeunload = function (_) {
+        closeStream();
+        for (let u in peerConnectionMap) {
+            peerConnectionMap[u].close();
         }
     }
 
