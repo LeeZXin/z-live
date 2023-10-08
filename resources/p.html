@@ -745,8 +745,12 @@
             let removeList = [];
             let newDivList = [];
             divList.forEach(t => {
+                if (t.uid === userId) {
+                    newDivList.push(t);
+                    return;
+                }
                 for (let i in userIdList) {
-                    if (t.uid === userIdList[i] || t.uid === userId) {
+                    if (t.uid === userIdList[i]) {
                         newDivList.push(t);
                         return;
                     }
