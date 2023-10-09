@@ -203,7 +203,7 @@
 <div id="div-list"></div>
 <div id="video-list">
     <div class="live" id="flv-div">
-        <video id="flv-video" autoplay muted></video>
+        <video id="flv-video" autoplay></video>
         <div id="flv-warn"></div>
     </div>
     <div class="live" id="main-div">
@@ -531,6 +531,14 @@
         startMedia('', '');
         showFlvWarn(noFlvMsg);
         initFlv();
+        getTarget("flv-video").addEventListener('canplay', function (_) {
+            console.log("canplay");
+            closeFlvWarn();
+        });
+        getTarget("flv-video").addEventListener('ended', function (_) {
+            console.log("ended");
+            reloadFlvPlayer();
+        });
     }
 
     function renderDevList() {
@@ -674,7 +682,7 @@
             url = forwardUrl + "?user=" + uid + "&room=" + roomId;
         }
         let peerConnection = new RTCPeerConnection();
-        let websocketConnection = new WebSocket(url)
+        let websocketConnection = new WebSocket(url);
         websocketConnection.onmessage = msg => {
             let content = JSON.parse(msg.data)
             if (!content) {
@@ -693,7 +701,8 @@
             direction: 'recvonly'
         })
         peerConnection.oniceconnectionstatechange = _ => {
-            if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'closed') {
+            console.log(peerConnection.iceConnectionState);
+            if (peerConnection.iceConnectionState === '' || peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'closed') {
                 if (uid !== userId) {
                     delete peerConnectionMap[uid];
                     delete mediaStreamMap[uid];
@@ -701,7 +710,11 @@
                 }
                 // 重新连接
                 if (isMain) {
-                    joinRoom();
+                    try {
+                        joinRoom();
+                    } catch (error) {
+
+                    }
                 }
             }
         }
@@ -885,24 +898,26 @@
             }
         }, 2000);
         flvPlayer.on(flvjs.Events.ERROR, (e) => {
+            reloadFlvPlayer();
+        });
+        flvPlayer.load();
+        flvPlayer.play();
+    }
+
+    function reloadFlvPlayer() {
+        if (flvPlayer) {
             // destroy
             flvPlayer.pause();
             flvPlayer.unload();
             flvPlayer.detachMediaElement();
             flvPlayer.destroy();
             flvPlayer = null;
-            showFlvWarn(noFlvMsg);
-            // 进行重建的逻辑，这里不再展开
-            setTimeout(function () {
-                flv_load();
-            }, 5000);
-        });
-        flvPlayer.on('canplay', (_) => {
-            console.log('fffff');
-            closeFlvWarn();
-        })
-        flvPlayer.load();
-        flvPlayer.play();
+        }
+        showFlvWarn(noFlvMsg);
+        // 进行重建的逻辑，这里不再展开
+        setTimeout(function () {
+            flv_load();
+        }, 5000);
     }
 
     document.addEventListener('visibilitychange', function () {
