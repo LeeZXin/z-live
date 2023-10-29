@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"errors"
-	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/taskutil"
+	"github.com/LeeZXin/zsf-utils/quit"
+	"github.com/LeeZXin/zsf-utils/taskutil"
 	"github.com/LeeZXin/zsf/ws"
 	"hash/crc32"
 	"sync"

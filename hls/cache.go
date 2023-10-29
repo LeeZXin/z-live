@@ -3,8 +3,8 @@ package hls
 import (
 	"bytes"
 	"fmt"
+	"github.com/LeeZXin/zsf-utils/cryptoutil"
 	"github.com/LeeZXin/zsf/logger"
-	"github.com/LeeZXin/zsf/util/cryptoutil"
 	"os"
 	"sync"
 	"time"

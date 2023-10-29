@@ -3,9 +3,9 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"github.com/LeeZXin/zsf-utils/quit"
+	"github.com/LeeZXin/zsf-utils/threadutil"
 	"github.com/LeeZXin/zsf/logger"
-	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/threadutil"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"

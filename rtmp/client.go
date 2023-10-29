@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/LeeZXin/z-live/amf"
 	"github.com/LeeZXin/z-live/av"
-	"github.com/LeeZXin/zsf/property"
+	"github.com/LeeZXin/zsf/property/static"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"net"
@@ -224,7 +224,7 @@ func (c *cmdCli) Start(req string, method string) error {
 	var conn net.Conn
 	if isRtmps {
 		var config tls.Config
-		if property.GetBool("enable_tls_verify") {
+		if static.GetBool("enable_tls_verify") {
 			roots, err := x509.SystemCertPool()
 			if err != nil {
 				log.Warning(err)

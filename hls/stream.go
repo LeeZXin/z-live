@@ -8,9 +8,9 @@ import (
 	"github.com/LeeZXin/z-live/flv"
 	"github.com/LeeZXin/z-live/hls/ts"
 	"github.com/LeeZXin/z-live/parser"
-	"github.com/LeeZXin/zsf/property"
-	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/threadutil"
+	"github.com/LeeZXin/zsf-utils/quit"
+	"github.com/LeeZXin/zsf-utils/threadutil"
+	"github.com/LeeZXin/zsf/property/static"
 	"sync"
 )
 
@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	SaveFileFlag = property.GetBool("hls.saveFile")
+	SaveFileFlag = static.GetBool("hls.saveFile")
 }
 
 var (

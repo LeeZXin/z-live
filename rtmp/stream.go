@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/LeeZXin/z-live/av"
 	"github.com/LeeZXin/z-live/flv"
-	"github.com/LeeZXin/zsf/executor"
-	"github.com/LeeZXin/zsf/util/threadutil"
+	"github.com/LeeZXin/zsf-utils/executor"
+	"github.com/LeeZXin/zsf-utils/threadutil"
 	"io"
 	"sync"
 )

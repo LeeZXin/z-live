@@ -1,8 +1,8 @@
 package p2p
 
 import (
+	"github.com/LeeZXin/zsf-utils/quit"
 	"github.com/LeeZXin/zsf/logger"
-	"github.com/LeeZXin/zsf/quit"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v3"
 	"net"

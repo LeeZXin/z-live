@@ -1,8 +1,8 @@
 package sfu
 
 import (
-	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/taskutil"
+	"github.com/LeeZXin/zsf-utils/quit"
+	"github.com/LeeZXin/zsf-utils/taskutil"
 	"github.com/pion/webrtc/v4"
 	"hash/crc32"
 	"sync"

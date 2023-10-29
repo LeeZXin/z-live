@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"github.com/LeeZXin/z-live/flv"
 	"github.com/LeeZXin/z-live/hls"
+	"github.com/LeeZXin/zsf-utils/quit"
+	"github.com/LeeZXin/zsf-utils/strutil"
+	"github.com/LeeZXin/zsf-utils/threadutil"
 	"github.com/LeeZXin/zsf/logger"
-	"github.com/LeeZXin/zsf/property"
-	"github.com/LeeZXin/zsf/quit"
-	"github.com/LeeZXin/zsf/util/strutil"
-	"github.com/LeeZXin/zsf/util/threadutil"
+	"github.com/LeeZXin/zsf/property/static"
 	"io"
 	"net"
 	"sync"
@@ -46,7 +46,7 @@ func NewTcpServer(addr string) *TcpServer {
 }
 
 func NewTlsServer(addr string) *TcpServer {
-	cert, err := tls.LoadX509KeyPair(property.GetString("rtmp.tls.path.ca"), property.GetString("rtmp.tls.path.key"))
+	cert, err := tls.LoadX509KeyPair(static.GetString("rtmp.tls.path.ca"), static.GetString("rtmp.tls.path.key"))
 	if err != nil {
 		logger.Logger.Panic(err)
 	}
