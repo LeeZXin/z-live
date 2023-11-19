@@ -3,6 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, init-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
     <title>p</title>
     <style>
         ul {
@@ -11,12 +13,19 @@
             list-style: none;
         }
 
+        html {
+            overflow: hidden;
+        }
+
         body {
+            width: calc(100vw);
+            height: calc(100vh);
             position: relative;
             background-color: lightgray;
             padding: 0;
             margin: 0;
             overflow: hidden;
+            transform-origin: left top;
         }
 
         .live {
@@ -27,6 +36,7 @@
             text-align: center;
             color: white;
             overflow: hidden;
+            z-index: 500;
 
         }
 
@@ -48,6 +58,10 @@
         #div-list {
         }
 
+        #video-list {
+            position: relative;
+        }
+
         #dev-info {
             border-radius: 8px;
             background-color: rgb(0, 0, 0, 0.6);
@@ -56,7 +70,7 @@
             color: white;
             font-size: 14px;
             z-index: 1001;
-            position: fixed;
+            position: absolute;
             left: 6px;
             top: 50px;
             overflow: hidden;
@@ -69,7 +83,7 @@
             width: calc(100vw);
             height: calc(100vh);
             z-index: 1000;
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             background-color: rgb(0, 0, 0, 0.6);
@@ -103,7 +117,7 @@
             background-color: rgb(0, 0, 0, 0.6);
             text-align: center;
             color: white;
-            position: fixed;
+            position: absolute;
             left: 6px;
             top: 50px;
             display: none;
@@ -115,7 +129,7 @@
 
         .dev-list {
             width: 400px;
-            position: fixed;
+            position: absolute;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
@@ -174,6 +188,16 @@
 </head>
 
 <body>
+<div id="video-list">
+    <div class="live" id="flv-div">
+        <video id="flv-video" autoplay></video>
+        <div id="flv-warn"></div>
+    </div>
+    <div class="live" id="main-div">
+        <video id="main-video" autoplay muted></video>
+        <div id="main-warn"></div>
+    </div>
+</div>
 <div class="online-info">
     <span>在线人数：</span>
     <span id="people-count">0</span>
@@ -201,16 +225,6 @@
     <ul class="dev-list-content" id="microphone-list"></ul>
 </div>
 <div id="div-list"></div>
-<div id="video-list">
-    <div class="live" id="flv-div">
-        <video id="flv-video" autoplay></video>
-        <div id="flv-warn"></div>
-    </div>
-    <div class="live" id="main-div">
-        <video id="main-video" autoplay muted></video>
-        <div id="main-warn"></div>
-    </div>
-</div>
 </body>
 <script src="/jq.js"></script>
 <script src="/flv.js"></script>
@@ -230,6 +244,8 @@
     let peerConnectionMap = {};
     let mediaStreamMap = {};
     let mainPeerConnection = null;
+    let divListTouchStartX = 0;
+    let divListTouchMoveX = 0;
     const roomId = '{{roomId}}';
     const userId = generateRandomString(10);
     const joinRoomUrl = `ws://${window.location.host}/signal-room`;
@@ -259,8 +275,16 @@
     });
 
     function getEnv() {
-        let windowWidth = window.innerWidth;
-        let windowHeight = window.innerHeight;
+        let windowWidth;
+        let windowHeight;
+        if (shouldHorizontalView()) {
+            windowWidth = window.innerHeight;
+            windowHeight = window.innerWidth;
+        } else {
+            windowWidth = window.innerWidth;
+            windowHeight = window.innerHeight;
+        }
+
         let sidePosHeight = Math.max(~~(windowHeight * 0.2), 150);
         return {
             windowWidth: windowWidth,
@@ -381,29 +405,74 @@
         let target = getTarget("div-list");
         target.style.width = env.sidePosWidth;
         target.style.height = env.mainPosHeight;
+        target.style.left = env.mainPosWidth;
     }
 
     function initDivList() {
         let target = getTarget("div-list");
         target.style.width = env.sidePosWidth;
         target.style.height = env.mainPosHeight;
-        target.style.right = '0px';
+        target.style.left = env.mainPosWidth;
         target.style.top = '0px';
         target.style.position = 'absolute';
         target.style.zIndex = '998';
-        target.addEventListener('wheel', function (event) {
-            let totalHeight = (divList.length - 1) * env.sideHeight;
-            if (env.windowHeight < totalHeight) {
-                let tmp = divListScrollTop + event.deltaY * -1;
-                let sub = totalHeight - env.windowHeight;
-                if (tmp < 0 && Math.abs(tmp) < sub) {
-                    divListScrollTop = tmp;
+        if (shouldHorizontalView()) {
+            target.addEventListener('touchstart', function (event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                    return
+                }
+                divListTouchStartX = event.touches[0].pageX;
+            }, false)
+            target.addEventListener('touchmove', function (event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                    return
+                }
+                divListTouchMoveX = event.touches[0].pageX - divListTouchStartX;
+            }, false)
+            target.addEventListener('touchend', function (event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                    return
+                }
+                let totalHeight = (divList.length - 1) * env.sideHeight;
+                if (env.windowHeight < totalHeight) {
+                    let tmp = divListScrollTop - divListTouchMoveX;
+                    let sub = totalHeight - env.windowHeight;
+                    if (tmp < 0) {
+                        if (Math.abs(tmp) < sub) {
+                            divListScrollTop = tmp;
+                        } else {
+                            divListScrollTop = -sub;
+                        }
+                    } else {
+                        divListScrollTop = 0;
+                    }
                     changeSidePos();
                 }
-            }
-        });
+            }, false)
+        } else {
+            target.addEventListener('wheel', function (event) {
+                let totalHeight = (divList.length - 1) * env.sideHeight;
+                if (env.windowHeight < totalHeight) {
+                    let tmp = divListScrollTop - event.deltaY;
+                    let sub = totalHeight - env.windowHeight;
+                    if (tmp < 0 && Math.abs(tmp) < sub) {
+                        divListScrollTop = tmp;
+                        changeSidePos();
+                    }
+                }
+            });
+        }
+
         target.addEventListener('click', function (event) {
-            let t = Math.abs(divListScrollTop) + event.clientY;
+            let t;
+            if (shouldHorizontalView()) {
+                t = Math.abs(divListScrollTop) + (env.windowHeight - event.clientX);
+            } else {
+                t = Math.abs(divListScrollTop) + event.clientY;
+            }
             let targetIndex = Math.floor(t / env.sideHeight);
             let index = 0;
             for (let i in divList) {
@@ -443,37 +512,42 @@
                 echoCancellation: true,
             };
         }
-        navigator
-            .mediaDevices
-            .getUserMedia(constraints)
-            .then(stream => {
-                let t = stream.getVideoTracks();
-                if (t) {
-                    selectedCameraDevId = t[0].getSettings().deviceId;
-                }
-                let a = stream.getAudioTracks();
-                if (a) {
-                    selectedMicrophoneId = a[0].getSettings().deviceId;
-                }
-                getMediaDevList(devices => {
-                    cameraDevices = devices.filter(function (device) {
-                        return device.kind === "videoinput" && device.deviceId !== "";
-                    });
-                    microphoneDevices = devices.filter(function (device) {
-                        return device.kind === "audioinput" && device.deviceId !== "";
-                    });
-                    renderDevList();
+        if (navigator.mediaDevices) {
+            navigator
+                .mediaDevices
+                .getUserMedia(constraints)
+                .then(stream => {
+                    let t = stream.getVideoTracks();
+                    if (t) {
+                        selectedCameraDevId = t[0].getSettings().deviceId;
+                    }
+                    let a = stream.getAudioTracks();
+                    if (a) {
+                        selectedMicrophoneId = a[0].getSettings().deviceId;
+                    }
+                    getMediaDevList(devices => {
+                        cameraDevices = devices.filter(function (device) {
+                            return device.kind === "videoinput" && device.deviceId !== "";
+                        });
+                        microphoneDevices = devices.filter(function (device) {
+                            return device.kind === "audioinput" && device.deviceId !== "";
+                        });
+                        renderDevList();
+                    })
+                    callback(stream);
                 })
-                callback(stream);
-            })
-            .catch((error) => {
-                currentCameraState = false;
-                if (error.name === 'NotAllowedError') {
-                    showMainWarn(disallowWarnMsg);
-                } else {
-                    console.log('获取音频设备列表失败：', error);
-                }
-            })
+                .catch((error) => {
+                    currentCameraState = false;
+                    if (error.name === 'NotAllowedError') {
+                        showMainWarn(disallowWarnMsg);
+                    } else {
+                        console.log('获取音频设备列表失败：', error);
+                    }
+                })
+        } else {
+            showMainWarn(disallowWarnMsg);
+        }
+
     }
 
     function showMainWarn(msg) {
@@ -525,6 +599,12 @@
     }
 
     function init() {
+        if (shouldHorizontalView()) {
+            horizonScreen();
+        }
+        document.addEventListener('gesturestart', (e) => {
+            e.preventDefault();
+        })
         changePos(getTarget("flv-div"));
         initDivList();
         closeDeviceFnList();
@@ -539,6 +619,17 @@
             console.log("ended");
             reloadFlvPlayer();
         });
+        setTimeout(() => {
+            getMemberList();
+        }, 5000);
+    }
+
+    function horizonScreen() {
+        document.getElementById("dev-mask").style.width = "calc(100vh)";
+        document.getElementById("dev-mask").style.height = "calc(100vw)";
+        document.getElementsByTagName("body")[0].style.width = "calc(100vh)";
+        document.getElementsByTagName("body")[0].style.height = "calc(100vw)";
+        document.getElementsByTagName("body")[0].style.transform = "rotate(90deg) translate(0, calc(-100vw))"
     }
 
     function renderDevList() {
@@ -694,6 +785,9 @@
                 peerConnection.setRemoteDescription(content)
             }
         }
+        websocketConnection.onerror = error => {
+            console.log(error);
+        }
         peerConnection.addTransceiver('video', {
             direction: 'recvonly'
         })
@@ -752,10 +846,6 @@
             return false;
         }
         mainPeerConnection = initPeerConnection(userId, true);
-        console.log("join", userId);
-        setTimeout(() => {
-            getMemberList();
-        }, 5000);
         return true;
     }
 
@@ -856,7 +946,7 @@
 
     function flv_load() {
         if (!flvjs.isSupported()) {
-            showFlvWarn("notSupportFlvMsg");
+            showFlvWarn(notSupportFlvMsg);
             return
         }
         let mediaDataSource = {
@@ -945,6 +1035,10 @@
         for (let u in peerConnectionMap) {
             peerConnectionMap[u].close();
         }
+    }
+
+    function shouldHorizontalView() {
+        return 'ontouchstart' in window && Math.abs(window.orientation) !== 90;
     }
 
     init();
